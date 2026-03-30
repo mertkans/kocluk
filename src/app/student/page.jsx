@@ -10,6 +10,7 @@ export default function StudentDashboard() {
     const [assignments, setAssignments] = useState([]);
     const [submissions, setSubmissions] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         if (profile) fetchData();
@@ -17,30 +18,52 @@ export default function StudentDashboard() {
 
     const fetchData = async () => {
         setLoading(true);
+        setError(null);
 
-        // Bana atanan ödevleri çek
-        const { data: asData } = await supabase
-            .from('assignment_students')
-            .select('assignment_id, assignments(*)')
-            .eq('student_id', profile.id);
+        try {
+            // Bana atanan ödevleri çek
+            const { data: asData, error: asError } = await supabase
+                .from('assignment_students')
+                .select('assignment_id, assignments(*)')
+                .eq('student_id', profile.id);
+            
+            if (asError) throw asError;
 
-        const assignmentList = (asData || []).map((a) => a.assignments).filter(Boolean);
-        setAssignments(assignmentList);
+            const assignmentList = (asData || []).map((a) => a.assignments).filter(Boolean);
+            setAssignments(assignmentList);
 
-        // Teslim ettiğim ödevleri çek
-        const { data: subData } = await supabase
-            .from('submissions')
-            .select('assignment_id, score')
-            .eq('student_id', profile.id);
+            // Teslim ettiğim ödevleri çek
+            const { data: subData, error: subError } = await supabase
+                .from('submissions')
+                .select('assignment_id, score')
+                .eq('student_id', profile.id);
+            
+            if (subError) throw subError;
 
-        setSubmissions(subData || []);
-        setLoading(false);
+            setSubmissions(subData || []);
+        } catch (err) {
+            console.error('Öğrenci verisi çekme hatası:', err);
+            setError(err.message || 'Ödevlerinizi yüklerken bir sorun oluştu.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-64">
-                <div className="animate-pulse text-gray-400">Yükleniyor...</div>
+            <div className="flex flex-col items-center justify-center h-64 gap-3">
+                <div className="animate-pulse text-gray-400">Veriler Yükleniyor... (Lütfen Bekleyin)</div>
+                <button onClick={() => window.location.reload()} className="text-xs text-blue-500 underline mt-2">Takıldıysa sayfayı yenileyin</button>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="max-w-2xl mx-auto bg-red-50 border border-red-100 p-6 rounded-xl text-center">
+                <h3 className="text-red-800 font-bold mb-2">Hata Oluştu</h3>
+                <p className="text-red-600 text-sm mb-4">{error}</p>
+                <button onClick={fetchData} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm">Tekrar Dene</button>
             </div>
         );
     }

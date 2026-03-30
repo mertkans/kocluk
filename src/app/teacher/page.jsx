@@ -10,6 +10,7 @@ export default function TeacherDashboard() {
     const [stats, setStats] = useState({ studentCount: 0, assignmentCount: 0, submissionCount: 0 });
     const [recentAssignments, setRecentAssignments] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         if (!profile) return;
@@ -18,47 +19,71 @@ export default function TeacherDashboard() {
 
     const fetchData = async () => {
         setLoading(true);
+        setError(null);
 
-        // Ödevleri çek (son 5 tanesi)
-        const { data: assignmentsData } = await supabase
-            .from('assignments')
-            .select('*, assignment_students(student_id), submissions(id)')
-            .eq('teacher_id', profile.id)
-            .order('created_at', { ascending: false })
-            .limit(5);
+        try {
+            // Ödevleri çek (son 5 tanesi)
+            const { data: assignmentsData, error: aError } = await supabase
+                .from('assignments')
+                .select('*, assignment_students(student_id), submissions(id)')
+                .eq('teacher_id', profile.id)
+                .order('created_at', { ascending: false })
+                .limit(5);
 
-        const allAssignments = assignmentsData || [];
-        setRecentAssignments(allAssignments);
+            if (aError) throw aError;
 
-        // Toplam ödev sayısı
-        const { count: assignmentCount } = await supabase
-            .from('assignments')
-            .select('*', { count: 'exact', head: true })
-            .eq('teacher_id', profile.id);
+            const allAssignments = assignmentsData || [];
+            setRecentAssignments(allAssignments);
 
-        // Öğrenci sayısını çek
-        const { count: studentCount } = await supabase
-            .from('users')
-            .select('*', { count: 'exact', head: true })
-            .eq('role', 'student')
-            .eq('created_by', profile.id);
+            // Toplam ödev sayısı
+            const { count: assignmentCount, error: countError } = await supabase
+                .from('assignments')
+                .select('*', { count: 'exact', head: true })
+                .eq('teacher_id', profile.id);
+            
+            if (countError) throw countError;
 
-        // Toplam teslim sayısı
-        const totalSubmissions = allAssignments.reduce((acc, a) => acc + (a.submissions?.length || 0), 0);
+            // Öğrenci sayısını çek
+            const { count: studentCount, error: sCountError } = await supabase
+                .from('users')
+                .select('*', { count: 'exact', head: true })
+                .eq('role', 'student')
+                .eq('created_by', profile.id);
+            
+            if (sCountError) throw sCountError;
 
-        setStats({
-            studentCount: studentCount || 0,
-            assignmentCount: assignmentCount || 0,
-            submissionCount: totalSubmissions,
-        });
+            // Toplam teslim sayısı
+            const totalSubmissions = allAssignments.reduce((acc, a) => acc + (a.submissions?.length || 0), 0);
 
-        setLoading(false);
+            setStats({
+                studentCount: studentCount || 0,
+                assignmentCount: assignmentCount || 0,
+                submissionCount: totalSubmissions,
+            });
+        } catch (err) {
+            console.error('Veri çekme hatası:', err);
+            setError(err.message || 'Veritabanına bağlanılamadı');
+        } finally {
+            setLoading(false);
+        }
     };
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-64">
-                <div className="animate-pulse text-gray-400">Yükleniyor...</div>
+            <div className="flex flex-col items-center justify-center h-64 gap-3">
+                <div className="animate-pulse text-gray-400">Veriler Yükleniyor... (Lütfen Bekleyin)</div>
+                {/* 10 saniye sonrası için fallback */}
+                <button onClick={() => window.location.reload()} className="text-xs text-blue-500 underline mt-2">Takıldıysa sayfayı yenileyin</button>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="bg-red-50 border border-red-100 p-6 rounded-xl text-center">
+                <h3 className="text-red-800 font-bold mb-2">Hata Oluştu</h3>
+                <p className="text-red-600 text-sm mb-4">{error}</p>
+                <button onClick={fetchData} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm">Tekrar Dene</button>
             </div>
         );
     }
