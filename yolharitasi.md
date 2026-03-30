@@ -1,4 +1,4 @@
-# 🗺️ OdevAnti Gelişim Yol Haritası
+# 🗺️ Koçluk Gelişim Yol Haritası
 
 Bu belge, projenin gelecekteki vizyonunu ve eklenebilecek potansiyel özellikleri içermektedir.
 

@@ -24,7 +24,7 @@ git commit -m "Vercel yayını için hazır"
 5. **"Deploy"** butonuna basın.
 
 ### 4. Sonuç
-Vercel size `odevanti.vercel.app` gibi bir adres verecektir. Artık öğrencileriniz ve öğretmenleriniz bu adres üzerinden sisteme giriş yapabilir!
+Vercel size `kocluk.vercel.app` gibi bir adres verecektir. Artık öğrencileriniz ve öğretmenleriniz bu adres üzerinden sisteme giriş yapabilir!
 
 ---
 💡 **Not:** Herhangi bir adımda takılırsanız buradayım, sormanız yeterli.

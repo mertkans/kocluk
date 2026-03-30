@@ -47,7 +47,7 @@ export default function Sidebar() {
         <>
             {/* Logo / Başlık */}
             <div className="px-5 pt-6 pb-4">
-                <h1 className="text-xl font-black text-gray-900 tracking-tight">📚 ÖdevTakip</h1>
+                <h1 className="text-xl font-black text-gray-900 tracking-tight">🎯 Koçluk Paneli</h1>
                 <div className="mt-3 flex items-center gap-2">
                     <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${roleColors[profile.role]}`}>
                         {roleLabels[profile.role]}

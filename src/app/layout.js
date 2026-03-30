@@ -2,8 +2,8 @@ import './globals.css';
 import AuthProvider from '@/context/AuthProvider';
 
 export const metadata = {
-  title: 'ÖdevTakip - Ödev Takip Sistemi',
-  description: 'Optik form tabanlı interaktif ödev takip sistemi. Öğretmen ve öğrenci panelleri.',
+  title: 'Koçluk - Eğitim Takip Sistemi',
+  description: 'Eğitim koçluğu ve interaktif ödev takip sistemi. Öğretmen ve öğrenci panelleri.',
 };
 
 export default function RootLayout({ children }) {

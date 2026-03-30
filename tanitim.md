@@ -1,4 +1,4 @@
-# 🎓 Ödev Takip ve Analiz Sistemi (OdevAnti)
+# 🎓 Koçluk - Eğitim Takip ve Analiz Sistemi
 
 Bu proje, öğretmenlerin öğrencilerine dijital optik formlar üzerinden ödev verebilmelerini, bu ödevlerin sonuçlarını otomatik olarak analiz edebilmelerini ve konu bazlı gelişim raporları alabilmelerini sağlayan modern bir eğitim platformudur.
 
