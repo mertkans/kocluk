@@ -5,14 +5,20 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 const isConfigured = supabaseUrl && supabaseAnonKey && supabaseUrl.startsWith('http');
 
+// navigator.locks API bypass — React SPA'larda orphaned lock sorununu kökten çözer
+async function lockNoOp(_name, _acquireTimeout, fn) {
+    return await fn();
+}
+
 export const supabase = isConfigured
     ? createClient(supabaseUrl, supabaseAnonKey, {
         auth: {
             storageKey: 'kocluk-auth-token',
             persistSession: true,
             autoRefreshToken: true,
-            detectSessionInUrl: true
+            detectSessionInUrl: true,
+            flowType: 'implicit',
+            lock: lockNoOp,
         },
-        global: { fetch: fetch.bind(globalThis) }
     })
     : null;
