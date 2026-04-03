@@ -297,6 +297,9 @@ export default function OpticalForm({
                                     } else if (isCorrectAnswer) {
                                         btnClass =
                                             'bg-emerald-100 text-emerald-700 border-2 border-emerald-400 ring-1 ring-emerald-300';
+                                    } else if (readOnly && isSelected && !qFeedback) {
+                                        btnClass =
+                                            'bg-blue-600 text-white ring-2 ring-blue-200 ring-offset-1 cursor-default';
                                     } else if (readOnly) {
                                         btnClass = 'bg-gray-100 text-gray-300 border-2 border-gray-100 cursor-default';
                                     }
