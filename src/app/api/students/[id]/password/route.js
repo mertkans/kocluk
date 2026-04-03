@@ -7,7 +7,7 @@ export async function GET(request, { params }) {
             return NextResponse.json({ error: 'Supabase yapılandırılmamış.' }, { status: 500 });
         }
 
-        const { id } = params;
+        const { id } = await params;
         if (!id) {
             return NextResponse.json({ error: 'Öğrenci ID eksik.' }, { status: 400 });
         }
