@@ -66,7 +66,6 @@ export default function StudentDetailPage() {
     const { profile } = useAuth();
     const [student, setStudent] = useState(null);
     const [submissions, setSubmissions] = useState([]);
-    const [assignments, setAssignments] = useState({});
     const [topics, setTopics] = useState([]);
     const [loading, setLoading] = useState(true);
     const [timeFilter, setTimeFilter] = useState('all');
@@ -76,6 +75,12 @@ export default function StudentDetailPage() {
     const [passwordData, setPasswordData] = useState(null);
     const [passwordLoading, setPasswordLoading] = useState(false);
 
+    const [editing, setEditing] = useState(false);
+    const [editData, setEditData] = useState({ name: '', email: '', phone: '', classId: '' });
+    const [editLoading, setEditLoading] = useState(false);
+    const [editError, setEditError] = useState('');
+    const [classes, setClasses] = useState([]);
+
     useEffect(() => {
         if (profile && id) fetchData();
     }, [profile, id]);
@@ -83,7 +88,6 @@ export default function StudentDetailPage() {
     const fetchData = async () => {
         setLoading(true);
 
-        // Öğrenci bilgisi
         const { data: studentData } = await supabase
             .from('users')
             .select('*')
@@ -91,19 +95,25 @@ export default function StudentDetailPage() {
             .single();
         setStudent(studentData);
 
-        // Öğrencinin tüm teslimleri
         const { data: subsData } = await supabase
             .from('submissions')
             .select('*, assignments!submissions_assignment_id_fkey(id, title, question_count, option_count, answer_key, question_topics, created_at)')
             .eq('student_id', id);
         setSubmissions(subsData || []);
 
-        // Öğretmenin konularını çek
         const { data: topicsData } = await supabase
             .from('topics')
             .select('id, name')
             .eq('teacher_id', profile.id);
         setTopics(topicsData || []);
+
+        // Sınıfları çek (düzenleme formu için)
+        const { data: classData, error: classError } = await supabase
+            .from('classes')
+            .select('id, name')
+            .eq('teacher_id', profile.id)
+            .order('name');
+        if (!classError) setClasses(classData || []);
 
         setLoading(false);
     };
@@ -113,7 +123,6 @@ export default function StudentDetailPage() {
             setShowPassword(!showPassword);
             return;
         }
-
         setPasswordLoading(true);
         try {
             const res = await fetch(`/api/students/${id}/password`);
@@ -124,21 +133,55 @@ export default function StudentDetailPage() {
             } else {
                 alert(data.error || 'Şifre alınamadı.');
             }
-        } catch (error) {
+        } catch {
             alert('Bir hata oluştu.');
         } finally {
             setPasswordLoading(false);
         }
     };
 
-    // Zaman filtresi uygula
+    const startEditing = () => {
+        setEditData({
+            name: student.name || '',
+            email: student.email || '',
+            phone: student.phone || '',
+            classId: student.class_id || '',
+        });
+        setEditError('');
+        setEditing(true);
+    };
+
+    const handleSaveEdit = async (e) => {
+        e.preventDefault();
+        setEditLoading(true);
+        setEditError('');
+        try {
+            const res = await fetch(`/api/students/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(editData),
+            });
+            const data = await res.json();
+            if (data.success) {
+                setEditing(false);
+                fetchData();
+            } else {
+                setEditError(data.error || 'Güncelleme başarısız.');
+            }
+        } catch {
+            setEditError('Bir hata oluştu.');
+        }
+        setEditLoading(false);
+    };
+
+    // Zaman filtresi
     const filteredSubmissions = useMemo(() => {
         const cutoff = getFilterDate(timeFilter);
         if (!cutoff) return submissions;
         return submissions.filter((s) => {
             if (!s.submitted_at) return false;
             const d = new Date(s.submitted_at);
-            if (isNaN(d.getTime())) return false; // filter out invalid dates gracefully
+            if (isNaN(d.getTime())) return false;
             return d >= cutoff;
         });
     }, [submissions, timeFilter]);
@@ -151,79 +194,48 @@ export default function StudentDetailPage() {
         return filteredSubmissions.filter(s => selectedSubs.includes(s.id));
     }, [filteredSubmissions, selectedSubs]);
 
-    // Genel istatistikler
     const overallStats = useMemo(() => {
-        let totalQuestions = 0;
-        let correct = 0;
-        let incorrect = 0;
-        let empty = 0;
-
+        let totalQuestions = 0, correct = 0, incorrect = 0, empty = 0;
         for (const sub of activeSubmissions) {
             const assignment = sub.assignments;
             if (!assignment) continue;
-
             const answerKey = assignment.answer_key || {};
             const studentAnswers = sub.answers || {};
-            const questionCount = Object.keys(answerKey).length;
-            totalQuestions += questionCount;
-
+            totalQuestions += Object.keys(answerKey).length;
             for (const [qNum, correctAns] of Object.entries(answerKey)) {
-                const studentAns = studentAnswers[qNum];
-                if (!studentAns) {
-                    empty++;
-                } else if (studentAns === correctAns) {
-                    correct++;
-                } else {
-                    incorrect++;
-                }
+                const sa = studentAnswers[qNum];
+                if (!sa) empty++;
+                else if (sa === correctAns) correct++;
+                else incorrect++;
             }
         }
-
         const percentage = totalQuestions > 0 ? Math.round((correct / totalQuestions) * 100) : 0;
         return { totalQuestions, correct, incorrect, empty, percentage, assignmentCount: activeSubmissions.length };
     }, [activeSubmissions]);
 
-    // Konu bazlı istatistikler
     const topicStats = useMemo(() => {
         const topicMap = {};
-
         for (const sub of activeSubmissions) {
             const assignment = sub.assignments;
             if (!assignment) continue;
-
             const answerKey = assignment.answer_key || {};
             const questionTopics = assignment.question_topics || {};
             const studentAnswers = sub.answers || {};
-
             for (const [qNum, correctAns] of Object.entries(answerKey)) {
                 const topicId = questionTopics[qNum];
                 if (!topicId) continue;
-
-                if (!topicMap[topicId]) {
-                    topicMap[topicId] = { total: 0, correct: 0, incorrect: 0, empty: 0 };
-                }
-
-                const studentAns = studentAnswers[qNum];
+                if (!topicMap[topicId]) topicMap[topicId] = { total: 0, correct: 0, incorrect: 0, empty: 0 };
+                const sa = studentAnswers[qNum];
                 topicMap[topicId].total++;
-                if (!studentAns) {
-                    topicMap[topicId].empty++;
-                } else if (studentAns === correctAns) {
-                    topicMap[topicId].correct++;
-                } else {
-                    topicMap[topicId].incorrect++;
-                }
+                if (!sa) topicMap[topicId].empty++;
+                else if (sa === correctAns) topicMap[topicId].correct++;
+                else topicMap[topicId].incorrect++;
             }
         }
-
         return Object.entries(topicMap)
             .map(([topicId, stats]) => {
                 const topic = topics.find((t) => t.id === topicId);
-                return {
-                    id: topicId,
-                    name: topic?.name || 'Bilinmeyen',
-                    ...stats,
-                    percentage: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
-                };
+                return { id: topicId, name: topic?.name || 'Bilinmeyen', ...stats, percentage: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0 };
             })
             .sort((a, b) => a.percentage - b.percentage);
     }, [activeSubmissions, topics]);
@@ -242,24 +254,32 @@ export default function StudentDetailPage() {
         <div className="max-w-4xl mx-auto space-y-6">
             {/* Başlık */}
             <div className="flex items-center gap-3">
-                <Link
-                    href="/teacher/students"
-                    className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-all"
-                >
+                <Link href="/teacher/students" className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-all">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
                 </Link>
                 <div className="flex-1">
-                    <h1 className="text-2xl font-bold text-gray-900">{student.name}</h1>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-2xl font-bold text-gray-900">{student.name}</h1>
+                        <button
+                            onClick={startEditing}
+                            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-all"
+                            title="Düzenle"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
                         <p className="text-sm text-gray-500">
-                            {student.class_level && `${student.class_level} · `}{student.email}
+                            {student.email}{student.phone && ` · ${student.phone}`}
                         </p>
                         <button
                             onClick={handleShowPassword}
                             disabled={passwordLoading}
-                            className="text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded transition-colors ml-2"
+                            className="text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded transition-colors"
                         >
                             {passwordLoading ? '...' : showPassword ? 'Gizle' : 'Şifreyi Göster'}
                         </button>
@@ -271,6 +291,69 @@ export default function StudentDetailPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Düzenleme Formu */}
+            {editing && (
+                <div className="bg-white rounded-2xl border border-blue-100 p-5 sm:p-6 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-base font-bold text-gray-800">✏️ Öğrenci Bilgilerini Düzenle</h2>
+                        <button onClick={() => setEditing(false)} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">İptal</button>
+                    </div>
+
+                    {editError && (
+                        <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-100 text-red-600 text-sm">{editError}</div>
+                    )}
+
+                    <form onSubmit={handleSaveEdit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-600 mb-1">Ad Soyad *</label>
+                            <input type="text" required value={editData.name}
+                                onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-600 mb-1">Email</label>
+                            <input type="email" value={editData.email}
+                                onChange={(e) => setEditData({ ...editData, email: e.target.value })}
+                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-600 mb-1">Telefon</label>
+                            <input type="tel" value={editData.phone}
+                                onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
+                                placeholder="05XX XXX XX XX"
+                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-600 mb-1">Sınıf</label>
+                            {classes.length === 0 ? (
+                                <p className="text-xs text-gray-400 py-2">Henüz sınıf oluşturulmamış.</p>
+                            ) : (
+                                <select
+                                    value={editData.classId}
+                                    onChange={(e) => setEditData({ ...editData, classId: e.target.value })}
+                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm bg-white"
+                                >
+                                    <option value="">Sınıf seçin...</option>
+                                    {classes.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
+                            )}
+                        </div>
+                        <div className="sm:col-span-2">
+                            <button type="submit" disabled={editLoading}
+                                className="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-sm hover:bg-blue-700 active:scale-[0.98] transition-all disabled:opacity-50 text-sm"
+                            >
+                                {editLoading ? 'Kaydediliyor...' : '💾 Değişiklikleri Kaydet'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
 
             {/* Zaman Filtresi */}
             <div className="flex items-center gap-2 flex-wrap">
@@ -322,25 +405,13 @@ export default function StudentDetailPage() {
                 <div className="bg-white rounded-xl border border-gray-100 p-4">
                     <div className="flex rounded-full overflow-hidden h-4">
                         {overallStats.correct > 0 && (
-                            <div
-                                className="bg-emerald-500 transition-all duration-500"
-                                style={{ width: `${(overallStats.correct / overallStats.totalQuestions) * 100}%` }}
-                                title={`Doğru: ${overallStats.correct}`}
-                            />
+                            <div className="bg-emerald-500 transition-all duration-500" style={{ width: `${(overallStats.correct / overallStats.totalQuestions) * 100}%` }} title={`Doğru: ${overallStats.correct}`} />
                         )}
                         {overallStats.incorrect > 0 && (
-                            <div
-                                className="bg-red-500 transition-all duration-500"
-                                style={{ width: `${(overallStats.incorrect / overallStats.totalQuestions) * 100}%` }}
-                                title={`Yanlış: ${overallStats.incorrect}`}
-                            />
+                            <div className="bg-red-500 transition-all duration-500" style={{ width: `${(overallStats.incorrect / overallStats.totalQuestions) * 100}%` }} title={`Yanlış: ${overallStats.incorrect}`} />
                         )}
                         {overallStats.empty > 0 && (
-                            <div
-                                className="bg-gray-300 transition-all duration-500"
-                                style={{ width: `${(overallStats.empty / overallStats.totalQuestions) * 100}%` }}
-                                title={`Boş: ${overallStats.empty}`}
-                            />
+                            <div className="bg-gray-300 transition-all duration-500" style={{ width: `${(overallStats.empty / overallStats.totalQuestions) * 100}%` }} title={`Boş: ${overallStats.empty}`} />
                         )}
                     </div>
                     <div className="flex items-center justify-center gap-4 mt-2 text-xs text-gray-500">
@@ -355,10 +426,7 @@ export default function StudentDetailPage() {
             {topicStats.length > 0 && (
                 <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
                     <h2 className="text-sm font-bold text-gray-700">📊 Konu Bazlı Analiz</h2>
-
                     <HorizontalBarComponent data={chartData} />
-
-                    {/* Konu detay tablosu */}
                     <div className="space-y-1.5 mt-2">
                         <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 px-3 text-xs font-medium text-gray-400">
                             <span>Konu</span>
@@ -368,14 +436,10 @@ export default function StudentDetailPage() {
                             <span className="w-14 text-center">Başarı</span>
                         </div>
                         {topicStats.map((t) => (
-                            <div
-                                key={t.id}
-                                className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-center px-3 py-2.5 rounded-lg bg-gray-50"
-                            >
+                            <div key={t.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-center px-3 py-2.5 rounded-lg bg-gray-50">
                                 <div className="flex items-center gap-2 min-w-0">
                                     <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                                        t.percentage >= 70 ? 'bg-emerald-500' :
-                                        t.percentage >= 40 ? 'bg-amber-500' : 'bg-red-500'
+                                        t.percentage >= 70 ? 'bg-emerald-500' : t.percentage >= 40 ? 'bg-amber-500' : 'bg-red-500'
                                     }`} />
                                     <span className="text-sm font-medium text-gray-700 truncate">{t.name}</span>
                                 </div>
@@ -383,11 +447,8 @@ export default function StudentDetailPage() {
                                 <span className="w-12 text-center text-sm text-emerald-600 font-medium">{t.correct}</span>
                                 <span className="w-12 text-center text-sm text-red-600 font-medium">{t.incorrect}</span>
                                 <span className={`w-14 text-center text-sm font-bold ${
-                                    t.percentage >= 70 ? 'text-emerald-600' :
-                                    t.percentage >= 40 ? 'text-amber-600' : 'text-red-600'
-                                }`}>
-                                    %{t.percentage}
-                                </span>
+                                    t.percentage >= 70 ? 'text-emerald-600' : t.percentage >= 40 ? 'text-amber-600' : 'text-red-600'
+                                }`}>%{t.percentage}</span>
                             </div>
                         ))}
                     </div>
@@ -398,9 +459,7 @@ export default function StudentDetailPage() {
             {filteredSubmissions.length === 0 && (
                 <div className="bg-white rounded-xl border border-dashed border-gray-200 p-8 text-center">
                     <p className="text-gray-400 text-sm">
-                        {timeFilter === 'all'
-                            ? 'Bu öğrenci henüz ödev teslim etmemiş.'
-                            : 'Seçilen dönemde teslim edilen ödev bulunmuyor.'}
+                        {timeFilter === 'all' ? 'Bu öğrenci henüz ödev teslim etmemiş.' : 'Seçilen dönemde teslim edilen ödev bulunmuyor.'}
                     </p>
                 </div>
             )}
@@ -436,14 +495,14 @@ export default function StudentDetailPage() {
                                     }`}
                                 >
                                     <div className="flex items-center gap-3 min-w-0">
-                                        <input 
-                                            type="checkbox" 
+                                        <input
+                                            type="checkbox"
                                             checked={selectedSubs.includes(sub.id)}
                                             onChange={(e) => {
                                                 if (e.target.checked) {
                                                     setSelectedSubs(prev => [...prev, sub.id]);
                                                 } else {
-                                                    setSelectedSubs(prev => prev.filter(id => id !== sub.id));
+                                                    setSelectedSubs(prev => prev.filter(sid => sid !== sub.id));
                                                 }
                                             }}
                                             className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
@@ -466,8 +525,7 @@ export default function StudentDetailPage() {
                                     </div>
                                     <Link href={`/teacher/assignments/${a.id}`} className="ml-3 shrink-0 text-right pr-2">
                                         <p className={`text-sm font-bold ${
-                                            pct >= 70 ? 'text-emerald-600' :
-                                            pct >= 40 ? 'text-amber-600' : 'text-red-600'
+                                            pct >= 70 ? 'text-emerald-600' : pct >= 40 ? 'text-amber-600' : 'text-red-600'
                                         }`}>%{pct}</p>
                                         <p className="text-xs text-gray-400">
                                             {sub.score?.correct}D / {sub.score?.incorrect}Y / {sub.score?.empty}B
