@@ -72,6 +72,10 @@ export default function StudentDetailPage() {
     const [timeFilter, setTimeFilter] = useState('all');
     const [selectedSubs, setSelectedSubs] = useState([]);
 
+    const [showPassword, setShowPassword] = useState(false);
+    const [passwordData, setPasswordData] = useState(null);
+    const [passwordLoading, setPasswordLoading] = useState(false);
+
     useEffect(() => {
         if (profile && id) fetchData();
     }, [profile, id]);
@@ -102,6 +106,29 @@ export default function StudentDetailPage() {
         setTopics(topicsData || []);
 
         setLoading(false);
+    };
+
+    const handleShowPassword = async () => {
+        if (passwordData) {
+            setShowPassword(!showPassword);
+            return;
+        }
+
+        setPasswordLoading(true);
+        try {
+            const res = await fetch(`/api/students/${id}/password`);
+            const data = await res.json();
+            if (data.success) {
+                setPasswordData(data.password);
+                setShowPassword(true);
+            } else {
+                alert(data.error || 'Şifre alınamadı.');
+            }
+        } catch (error) {
+            alert('Bir hata oluştu.');
+        } finally {
+            setPasswordLoading(false);
+        }
     };
 
     // Zaman filtresi uygula
@@ -223,11 +250,25 @@ export default function StudentDetailPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
                 </Link>
-                <div>
+                <div className="flex-1">
                     <h1 className="text-2xl font-bold text-gray-900">{student.name}</h1>
-                    <p className="text-sm text-gray-400">
-                        {student.class_level && `${student.class_level} · `}{student.email}
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                        <p className="text-sm text-gray-500">
+                            {student.class_level && `${student.class_level} · `}{student.email}
+                        </p>
+                        <button
+                            onClick={handleShowPassword}
+                            disabled={passwordLoading}
+                            className="text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded transition-colors ml-2"
+                        >
+                            {passwordLoading ? '...' : showPassword ? 'Gizle' : 'Şifreyi Göster'}
+                        </button>
+                        {showPassword && passwordData && (
+                            <span className="text-sm font-mono font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                                {passwordData}
+                            </span>
+                        )}
+                    </div>
                 </div>
             </div>
 

@@ -18,11 +18,12 @@ export async function POST(request) {
             Math.random().toString(36).slice(-4).toUpperCase() +
             Math.random().toString(36).slice(-4);
 
-        // Supabase Auth'a öğreni kaydet (Admin API)
+        // Supabase Auth'a öğrenciyi kaydet (Admin API)
         const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
             email,
             password: generatedPassword,
             email_confirm: true,
+            user_metadata: { plain_password: generatedPassword },
         });
 
         if (authError) {

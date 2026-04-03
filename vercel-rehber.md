@@ -18,9 +18,11 @@ git commit -m "Vercel yayını için hazır"
 1. [Vercel Dashboard](https://vercel.com/dashboard) sayfasına gidin.
 2. **"Add New"** > **"Project"** butonuna basın.
 3. GitHub reponuzu seçin ve **"Import"** deyin.
-4. **"Environment Variables"** bölümünü açın ve burası çok önemli; şu iki değeri ekleyin:
+4. **"Environment Variables"** bölümünü açın ve burası çok önemli; şu **üç** değeri ekleyin:
    - `NEXT_PUBLIC_SUPABASE_URL` -> (Supabase panelinizdeki URL)
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` -> (Supabase panelinizdeki Anon Key)
+   - `SUPABASE_SERVICE_ROLE_KEY` -> (Supabase panelindeki **Service Role** anahtarı — Settings > API > `service_role` secret)
+   > ⚠️ **Dikkat:** `SUPABASE_SERVICE_ROLE_KEY` olmadan öğretmen kaydı ve öğrenci oluşturma çalışmaz!
 5. **"Deploy"** butonuna basın.
 
 ### 4. Sonuç
