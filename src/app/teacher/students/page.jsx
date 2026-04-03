@@ -8,9 +8,10 @@ import Link from 'next/link';
 export default function TeacherStudentsPage() {
     const { profile } = useAuth();
     const [students, setStudents] = useState([]);
+    const [classes, setClasses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
-    const [formData, setFormData] = useState({ name: '', email: '', phone: '', classLevel: '' });
+    const [formData, setFormData] = useState({ name: '', email: '', phone: '', classId: '' });
     const [formLoading, setFormLoading] = useState(false);
     const [formError, setFormError] = useState('');
     const [createdStudent, setCreatedStudent] = useState(null);
@@ -18,14 +19,17 @@ export default function TeacherStudentsPage() {
     const [deleting, setDeleting] = useState(null);
 
     useEffect(() => {
-        if (profile) fetchStudents();
+        if (profile) {
+            fetchStudents();
+            fetchClasses();
+        }
     }, [profile]);
 
     const fetchStudents = async () => {
         setLoading(true);
         const { data } = await supabase
             .from('users')
-            .select('*')
+            .select('*, classes(name)')
             .eq('role', 'student')
             .eq('created_by', profile.id)
             .order('created_at', { ascending: false });
@@ -33,11 +37,26 @@ export default function TeacherStudentsPage() {
         setLoading(false);
     };
 
+    const fetchClasses = async () => {
+        const { data } = await supabase
+            .from('classes')
+            .select('id, name')
+            .eq('teacher_id', profile.id)
+            .order('name');
+        setClasses(data || []);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setFormError('');
         setFormLoading(true);
         setCreatedStudent(null);
+
+        if (!formData.classId) {
+            setFormError('Lütfen bir sınıf seçin.');
+            setFormLoading(false);
+            return;
+        }
 
         try {
             const res = await fetch('/api/students/create', {
@@ -49,7 +68,7 @@ export default function TeacherStudentsPage() {
 
             if (data.success) {
                 setCreatedStudent(data.student);
-                setFormData({ name: '', email: '', phone: '', classLevel: '' });
+                setFormData({ name: '', email: '', phone: '', classId: '' });
                 fetchStudents();
             } else {
                 setFormError(data.error);
@@ -114,7 +133,7 @@ export default function TeacherStudentsPage() {
                                 <p><span className="text-gray-500">Email:</span> <span className="font-medium">{createdStudent.email}</span></p>
                                 <p><span className="text-gray-500">Şifre:</span> <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">{createdStudent.password}</span></p>
                             </div>
-                            <p className="text-xs text-emerald-600 mt-2">⚠️ Bu şifreyi öğrenciye iletin. Tekrar gösterilmeyecektir.</p>
+                            <p className="text-xs text-emerald-600 mt-2">⚠️ Bu şifreyi öğrenciye iletin. Daha sonra öğrenci detay sayfasından tekrar görebilirsiniz.</p>
                         </div>
                     )}
 
@@ -144,15 +163,27 @@ export default function TeacherStudentsPage() {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-1">Sınıf Seviyesi</label>
-                            <input type="text" value={formData.classLevel}
-                                onChange={(e) => setFormData({ ...formData, classLevel: e.target.value })}
-                                placeholder="Örn: 12-A"
-                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm"
-                            />
+                            <label className="block text-sm font-medium text-gray-600 mb-1">Sınıf *</label>
+                            {classes.length === 0 ? (
+                                <div className="px-4 py-2.5 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-700">
+                                    Önce <Link href="/teacher/classes" className="underline font-semibold">bir sınıf oluşturun</Link>.
+                                </div>
+                            ) : (
+                                <select
+                                    required
+                                    value={formData.classId}
+                                    onChange={(e) => setFormData({ ...formData, classId: e.target.value })}
+                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm bg-white"
+                                >
+                                    <option value="">Sınıf seçin...</option>
+                                    {classes.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
+                            )}
                         </div>
                         <div className="sm:col-span-2">
-                            <button type="submit" disabled={formLoading}
+                            <button type="submit" disabled={formLoading || classes.length === 0}
                                 className="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-sm hover:bg-blue-700 active:scale-[0.98] transition-all disabled:opacity-50 text-sm"
                             >
                                 {formLoading ? 'Oluşturuluyor...' : '👨‍🎓 Öğrenciyi Kaydet'}
@@ -175,6 +206,7 @@ export default function TeacherStudentsPage() {
                 <div className="space-y-2">
                     {students.map((s) => {
                         const isDeleting = deleting === s.id;
+                        const className = s.classes?.name;
                         return (
                             <div
                                 key={s.id}
@@ -190,7 +222,8 @@ export default function TeacherStudentsPage() {
                                         <div className="min-w-0">
                                             <p className="font-medium text-gray-800 text-sm truncate group-hover:text-blue-700 transition-colors">{s.name}</p>
                                             <p className="text-xs text-gray-400 mt-0.5 truncate">
-                                                {s.class_level && `${s.class_level} · `}{s.email}{s.phone && ` · ${s.phone}`}
+                                                {className && <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[10px] font-semibold mr-1.5">{className}</span>}
+                                                {s.email}{s.phone && ` · ${s.phone}`}
                                             </p>
                                         </div>
                                     </Link>
@@ -241,7 +274,7 @@ export default function TeacherStudentsPage() {
                                 <strong>&ldquo;{confirmDelete.name}&rdquo;</strong> öğrencisini silmek istediğinize emin misiniz?
                             </p>
                             <p className="text-xs text-gray-400 mt-2">
-                                Bu işlem geri alınamaz. Öğrencinin tüm ödev teslimlerri de silinecektir.
+                                Bu işlem geri alınamaz. Öğrencinin tüm ödev teslimleri de silinecektir.
                             </p>
                         </div>
                         <div className="flex gap-2">

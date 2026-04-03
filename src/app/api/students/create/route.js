@@ -7,7 +7,7 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Supabase yapılandırılmamış.' }, { status: 500 });
         }
         const body = await request.json();
-        const { name, email, phone, classLevel, teacherId } = body;
+        const { name, email, phone, classId, teacherId } = body;
 
         if (!name || !email || !teacherId) {
             return NextResponse.json({ error: 'Ad, email ve öğretmen ID zorunludur.' }, { status: 400 });
@@ -40,7 +40,7 @@ export async function POST(request) {
                 name,
                 email,
                 phone: phone || null,
-                class_level: classLevel || null,
+                class_id: classId || null,
                 role: 'student',
                 created_by: teacherId,
             },

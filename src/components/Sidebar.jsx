@@ -13,6 +13,7 @@ const menuItems = {
     teacher: [
         { href: '/teacher', label: 'Dashboard', icon: '📊' },
         { href: '/teacher/students', label: 'Öğrencilerim', icon: '👨‍🎓' },
+        { href: '/teacher/classes', label: 'Sınıflar', icon: '🏫' },
         { href: '/teacher/topics', label: 'Konular', icon: '📎' },
         { href: '/teacher/assignments', label: 'Ödevler', icon: '📋' },
         { href: '/teacher/assignments/new', label: 'Yeni Ödev', icon: '➕' },
