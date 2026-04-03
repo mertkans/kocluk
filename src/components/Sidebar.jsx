@@ -7,11 +7,11 @@ import { useState } from 'react';
 
 const menuItems = {
     admin: [
-        { href: '/admin', label: 'Dashboard', icon: '📊' },
+        { href: '/admin', label: 'Ana Sayfa', icon: '📊' },
         { href: '/admin/users', label: 'Kullanıcılar', icon: '👥' },
     ],
     teacher: [
-        { href: '/teacher', label: 'Dashboard', icon: '📊' },
+        { href: '/teacher', label: 'Ana Sayfa', icon: '📊' },
         { href: '/teacher/students', label: 'Öğrencilerim', icon: '👨‍🎓' },
         { href: '/teacher/classes', label: 'Sınıflar', icon: '🏫' },
         { href: '/teacher/topics', label: 'Konular', icon: '📎' },
