@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthProvider';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 
-export default function TeacherDashboard() {
+export default function TeacherPage() {
     const { profile } = useAuth();
     const [stats, setStats] = useState({ studentCount: 0, assignmentCount: 0, submissionCount: 0 });
     const [recentAssignments, setRecentAssignments] = useState([]);
@@ -91,7 +91,7 @@ export default function TeacherDashboard() {
     return (
         <div className="max-w-4xl mx-auto space-y-8">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <h1 className="text-2xl font-bold text-gray-900">📊 Dashboard</h1>
+                <h1 className="text-2xl font-bold text-gray-900">📊 Ana Sayfa</h1>
                 <Link
                     href="/teacher/assignments/new"
                     className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gray-900 text-white font-semibold rounded-xl shadow-sm hover:bg-gray-800 active:scale-[0.98] transition-all text-sm"
