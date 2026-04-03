@@ -27,23 +27,35 @@ export default function TeacherStudentsPage() {
 
     const fetchStudents = async () => {
         setLoading(true);
-        const { data } = await supabase
+        // Önce classes join ile dene, hata olursa sadece users çek
+        let { data, error } = await supabase
             .from('users')
             .select('*, classes(name)')
             .eq('role', 'student')
             .eq('created_by', profile.id)
             .order('created_at', { ascending: false });
+
+        if (error) {
+            // classes tablosu yoksa join'siz dene
+            const res = await supabase
+                .from('users')
+                .select('*')
+                .eq('role', 'student')
+                .eq('created_by', profile.id)
+                .order('created_at', { ascending: false });
+            data = res.data;
+        }
         setStudents(data || []);
         setLoading(false);
     };
 
     const fetchClasses = async () => {
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from('classes')
             .select('id, name')
             .eq('teacher_id', profile.id)
             .order('name');
-        setClasses(data || []);
+        if (!error) setClasses(data || []);
     };
 
     const handleSubmit = async (e) => {
