@@ -135,6 +135,9 @@ export default function OpticalForm({
     questionTopics = {},
     onQuestionTopicChange,
     onAddTopic,
+    // Buton özelleştirme
+    submitLabel,
+    submitDisabled = false,
 }) {
     const [answers, setAnswers] = useState(initialAnswers);
     const [bulkTopicOpen, setBulkTopicOpen] = useState(false);
@@ -354,12 +357,13 @@ export default function OpticalForm({
                 <div className="mt-6 sticky bottom-4 z-10">
                     <button
                         onClick={handleSubmit}
-                        disabled={answeredCount === 0}
+                        disabled={submitDisabled || answeredCount === 0}
                         className="w-full py-3.5 bg-gray-900 text-white font-semibold rounded-xl shadow-lg hover:bg-gray-800 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                        {mode === 'teacher'
-                            ? `✅ Cevap Anahtarını Kaydet (${answeredCount}/${questionCount})`
-                            : `📤 Cevaplarımı Gönder (${answeredCount}/${questionCount})`}
+                        {submitLabel ||
+                            (mode === 'teacher'
+                                ? `✅ Cevap Anahtarını Kaydet (${answeredCount}/${questionCount})`
+                                : `📤 Cevaplarımı Gönder (${answeredCount}/${questionCount})`)}
                     </button>
                 </div>
             )}

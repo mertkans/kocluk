@@ -15,6 +15,7 @@ const menuItems = {
         { href: '/teacher/students', label: 'Öğrencilerim', icon: '👨‍🎓' },
         { href: '/teacher/classes', label: 'Sınıflar', icon: '🏫' },
         { href: '/teacher/topics', label: 'Konular', icon: '📎' },
+        { href: '/teacher/answer-keys', label: 'Cevap Anahtarları', icon: '🔑' },
         { href: '/teacher/assignments', label: 'Ödevler', icon: '📋' },
         { href: '/teacher/assignments/new', label: 'Yeni Ödev', icon: '➕' },
     ],

@@ -25,6 +25,9 @@ export default function NewAssignmentPage() {
     const [answerKey, setAnswerKey] = useState({});
     const [questionTopics, setQuestionTopics] = useState({});
     const [topics, setTopics] = useState([]);
+    const [answerKeyTemplates, setAnswerKeyTemplates] = useState([]);
+    const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+    const [appliedTemplate, setAppliedTemplate] = useState(null);
 
     // Aşama 3 - Öğrenci seçimi
     const [students, setStudents] = useState([]);
@@ -34,6 +37,7 @@ export default function NewAssignmentPage() {
         if (profile) {
             fetchStudents();
             fetchTopics();
+            fetchAnswerKeyTemplates();
         }
     }, [profile]);
 
@@ -54,6 +58,29 @@ export default function NewAssignmentPage() {
             .eq('teacher_id', profile.id)
             .order('name');
         setTopics(data || []);
+    };
+
+    const fetchAnswerKeyTemplates = async () => {
+        const { data } = await supabase
+            .from('answer_key_templates')
+            .select('id, name, question_count, option_count, answer_key')
+            .eq('teacher_id', profile.id)
+            .order('name');
+        setAnswerKeyTemplates(data || []);
+    };
+
+    const applyTemplate = (template) => {
+        setQuestionCount(template.question_count);
+        setOptionCount(template.option_count);
+        setAnswerKey(template.answer_key);
+        setAppliedTemplate(template);
+        setTemplatePickerOpen(false);
+        setQuestionTopics({});
+    };
+
+    const clearTemplate = () => {
+        setAppliedTemplate(null);
+        setAnswerKey({});
     };
 
     const handleAddTopic = async (name) => {
@@ -250,22 +277,93 @@ export default function NewAssignmentPage() {
 
             {/* Aşama 2: Cevap Anahtarı + Konu Ataması */}
             {step === 'answerKey' && (
-                <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-sm space-y-4">
-                    <OpticalForm
-                        questionCount={questionCount}
-                        optionCount={optionCount}
-                        mode="teacher"
-                        initialAnswers={answerKey}
-                        showTopics={true}
-                        topics={topics}
-                        questionTopics={questionTopics}
-                        onQuestionTopicChange={handleQuestionTopicChange}
-                        onAddTopic={handleAddTopic}
-                        onSubmit={(answers) => {
-                            setAnswerKey(answers);
-                            setStep('students');
-                        }}
-                    />
+                <div className="space-y-4">
+                    {/* Hazır Şablon Seçici */}
+                    {answerKeyTemplates.length > 0 && (
+                        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="min-w-0">
+                                    <p className="text-sm font-semibold text-gray-700">
+                                        🔑 Hazır Cevap Anahtarından Seç
+                                    </p>
+                                    {appliedTemplate ? (
+                                        <p className="text-xs text-emerald-600 mt-0.5 font-medium">
+                                            ✅ {appliedTemplate.name} uygulandı
+                                        </p>
+                                    ) : (
+                                        <p className="text-xs text-gray-400 mt-0.5">
+                                            Kaydedilmiş bir Şablonu seçerek cevapları otomatik doldurun.
+                                        </p>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    {appliedTemplate && (
+                                        <button
+                                            onClick={clearTemplate}
+                                            className="text-xs text-gray-400 hover:text-red-500 transition-colors px-2 py-1 rounded-lg hover:bg-red-50"
+                                        >
+                                            Temizle ×
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => setTemplatePickerOpen(!templatePickerOpen)}
+                                        className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                                            templatePickerOpen
+                                                ? 'bg-blue-600 text-white'
+                                                : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                                        }`}
+                                    >
+                                        {templatePickerOpen ? 'Kapat ▲' : 'Seç ▼'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {templatePickerOpen && (
+                                <div className="mt-3 border-t border-gray-100 pt-3 grid gap-2 sm:grid-cols-2">
+                                    {answerKeyTemplates.map((t) => (
+                                        <button
+                                            key={t.id}
+                                            onClick={() => applyTemplate(t)}
+                                            className={`flex items-center justify-between px-3 py-3 rounded-xl border-2 text-left transition-all ${
+                                                appliedTemplate?.id === t.id
+                                                    ? 'border-blue-500 bg-blue-50'
+                                                    : 'border-gray-100 hover:border-blue-200 hover:bg-blue-50/50'
+                                            }`}
+                                        >
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-semibold text-gray-800 truncate">{t.name}</p>
+                                                <p className="text-xs text-gray-400 mt-0.5">
+                                                    {t.question_count} soru · {t.option_count} şık
+                                                </p>
+                                            </div>
+                                            {appliedTemplate?.id === t.id && (
+                                                <span className="shrink-0 ml-2 text-blue-600 text-lg">✓</span>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Optik Form */}
+                    <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-sm">
+                        <OpticalForm
+                            questionCount={questionCount}
+                            optionCount={optionCount}
+                            mode="teacher"
+                            initialAnswers={answerKey}
+                            showTopics={true}
+                            topics={topics}
+                            questionTopics={questionTopics}
+                            onQuestionTopicChange={handleQuestionTopicChange}
+                            onAddTopic={handleAddTopic}
+                            onSubmit={(answers) => {
+                                setAnswerKey(answers);
+                                setStep('students');
+                            }}
+                        />
+                    </div>
                 </div>
             )}
 
