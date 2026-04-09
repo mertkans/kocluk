@@ -87,7 +87,7 @@ export async function POST(request) {
         // Gemini API'ye gönder
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({
-            model: 'gemini-2.0-flash',
+            model: 'gemini-1.5-flash',
             generationConfig: {
                 responseMimeType: 'application/json',
                 responseSchema,
