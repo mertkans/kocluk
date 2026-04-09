@@ -349,6 +349,7 @@ export default function NewAssignmentPage() {
                     {/* Optik Form */}
                     <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-sm">
                         <OpticalForm
+                            key={appliedTemplate?.id ?? 'manual'}
                             questionCount={questionCount}
                             optionCount={optionCount}
                             mode="teacher"
