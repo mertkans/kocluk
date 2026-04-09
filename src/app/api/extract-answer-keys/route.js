@@ -1,6 +1,5 @@
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 
-// Maksimum 10MB dosya boyutu
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 const SUPPORTED_MIME_TYPES = [
@@ -12,7 +11,7 @@ const SUPPORTED_MIME_TYPES = [
     'application/pdf',
 ];
 
-// Gemini'den beklediğimiz JSON şeması
+// answers → array formatında tanımlıyoruz (dinamik key sorununu aşmak için)
 const responseSchema = {
     type: SchemaType.OBJECT,
     properties: {
@@ -34,8 +33,22 @@ const responseSchema = {
                         description: 'Kaç şık var (4 veya 5)',
                     },
                     answers: {
-                        type: SchemaType.OBJECT,
-                        description: 'Soru numarası → cevap harfi (örn: {"1":"B","2":"D"})',
+                        type: SchemaType.ARRAY,
+                        description: 'Her sorunun cevabı',
+                        items: {
+                            type: SchemaType.OBJECT,
+                            properties: {
+                                q: {
+                                    type: SchemaType.INTEGER,
+                                    description: 'Soru numarası (1, 2, 3...)',
+                                },
+                                a: {
+                                    type: SchemaType.STRING,
+                                    description: 'Cevap harfi: A, B, C, D veya E',
+                                },
+                            },
+                            required: ['q', 'a'],
+                        },
                     },
                 },
                 required: ['test_number', 'question_count', 'option_count', 'answers'],
@@ -99,13 +112,28 @@ Kitabın adı: "${bookName}"
 
 Görevin:
 1. Tablodaki TÜM testleri bul (TEST 1, TEST 2, ... şeklinde sıralanmış)
-2. Her test için soru numarası → cevap harfi eşlemesini çıkar
-3. Cevap harfleri büyük harf olmalı (A, B, C, D veya E)
-4. Boş bırakılmış sorular answers objesine dahil edilmemeli
-5. option_count: sadece 4 veya 5 olabilir — tablodaki maksimum şık sayısına göre belirle
-6. question_count: o testteki toplam soru sayısı (cevabı olan + boş)
+2. Her test için soru numarası ve cevap harfini çıkar
+3. answers dizisi: her eleman {q: <soru_no>, a: "<cevap_harfi>"} formatında olmalı
+4. Cevap harfleri büyük harf (A, B, C, D veya E)
+5. Boş/cevapsız sorular dahil edilmemeli
+6. option_count: 4 veya 5 (tablodaki maksimum şık sayısına göre)
+7. question_count: o testteki toplam soru sayısı
 
-Sonucu belirtilen JSON şemasına göre döndür.`;
+Örnek çıktı formatı:
+{
+  "tests": [
+    {
+      "test_number": 1,
+      "question_count": 15,
+      "option_count": 5,
+      "answers": [
+        {"q": 1, "a": "B"},
+        {"q": 2, "a": "D"},
+        {"q": 3, "a": "A"}
+      ]
+    }
+  ]
+}`;
 
         const result = await model.generateContent({
             contents: [{
@@ -136,13 +164,23 @@ Sonucu belirtilen JSON şemasına göre döndür.`;
             );
         }
 
-        // Kitap adıyla test adlarını oluştur
-        const templates = tests.map((t) => ({
-            name: `${bookName} Test ${t.test_number}`,
-            question_count: t.question_count,
-            option_count: t.option_count || 5,
-            answer_key: t.answers,
-        }));
+        // answers array'ini { "1": "B", "2": "D" } formatına çevir
+        const templates = tests.map((t) => {
+            const answerKey = {};
+            if (Array.isArray(t.answers)) {
+                for (const item of t.answers) {
+                    if (item.q && item.a) {
+                        answerKey[String(item.q)] = item.a.toUpperCase();
+                    }
+                }
+            }
+            return {
+                name: `${bookName} Test ${t.test_number}`,
+                question_count: t.question_count,
+                option_count: t.option_count || 5,
+                answer_key: answerKey,
+            };
+        });
 
         return Response.json({ templates });
     } catch (err) {
