@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '@/context/AuthProvider';
 import { supabase } from '@/lib/supabaseClient';
 import OpticalForm from '@/components/OpticalForm';
@@ -61,6 +61,104 @@ function DropZone({ file, onFile }) {
     );
 }
 
+// ─── Kategori Accordion bileşeni ─────────────────────────────────────────────
+function CategoryGroup({ category, templates, openViewModal, openDeleteConfirm, deleting }) {
+    const [expanded, setExpanded] = useState(true);
+    const totalTests = templates.length;
+    const totalFilled = templates.reduce((sum, t) => sum + answeredCount(t.answer_key), 0);
+    const totalQuestions = templates.reduce((sum, t) => sum + t.question_count, 0);
+
+    return (
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+            {/* Kategori Başlığı */}
+            <button
+                onClick={() => setExpanded(!expanded)}
+                className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50/60 transition-all group"
+            >
+                <div className="flex items-center gap-3 min-w-0">
+                    <div className="shrink-0 w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-sm">
+                        <span className="text-white text-sm font-bold">📚</span>
+                    </div>
+                    <div className="text-left min-w-0">
+                        <p className="font-semibold text-gray-800 text-sm truncate group-hover:text-violet-700 transition-colors">
+                            {category}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                            {totalTests} test · {totalFilled}/{totalQuestions} toplam cevap
+                        </p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                    <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-violet-50 text-violet-700 text-xs font-bold">
+                        {totalTests}
+                    </span>
+                    <svg
+                        className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                </div>
+            </button>
+
+            {/* Testler Listesi */}
+            {expanded && (
+                <div className="border-t border-gray-50 divide-y divide-gray-50">
+                    {templates.map((t) => {
+                        const filled = answeredCount(t.answer_key);
+                        const pct = t.question_count > 0 ? Math.round((filled / t.question_count) * 100) : 0;
+                        const isDeleting = deleting === t.id;
+                        return (
+                            <div
+                                key={t.id}
+                                onClick={() => openViewModal(t)}
+                                className={`flex items-center gap-4 px-5 py-3.5 cursor-pointer hover:bg-blue-50/40 transition-all group/item ${isDeleting ? 'opacity-50 pointer-events-none' : ''}`}
+                            >
+                                <div className="shrink-0 w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 group-hover/item:bg-blue-100 group-hover/item:text-blue-600 transition-colors">
+                                    🔑
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-gray-700 text-sm truncate group-hover/item:text-blue-700 transition-colors">
+                                        {t.name}
+                                    </p>
+                                    <div className="flex items-center gap-3 mt-1">
+                                        <span className="text-xs text-gray-400">
+                                            {t.question_count} soru · {t.option_count} şık
+                                        </span>
+                                        <div className="flex items-center gap-1.5 flex-1 max-w-[120px]">
+                                            <div className="h-1 flex-1 bg-gray-100 rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full rounded-full transition-all ${pct === 100 ? 'bg-emerald-500' : pct > 50 ? 'bg-amber-400' : 'bg-gray-300'}`}
+                                                    style={{ width: `${pct}%` }}
+                                                />
+                                            </div>
+                                            <span className="text-xs font-medium text-gray-500">{filled}/{t.question_count}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <span className="text-xs text-gray-300">
+                                        {new Date(t.created_at).toLocaleDateString('tr-TR')}
+                                    </span>
+                                    <button
+                                        onClick={(e) => openDeleteConfirm(e, t)}
+                                        className="p-1.5 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-all opacity-0 group-hover/item:opacity-100"
+                                        title="Sil"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── Ana sayfa ───────────────────────────────────────────────────────────────
 export default function AnswerKeysPage() {
     const { profile } = useAuth();
@@ -72,6 +170,7 @@ export default function AnswerKeysPage() {
     const [manualMode, setManualMode] = useState('create'); // 'create' | 'view'
     const [selectedTemplate, setSelectedTemplate] = useState(null);
     const [manualName, setManualName] = useState('');
+    const [manualCategory, setManualCategory] = useState('');
     const [manualQCount, setManualQCount] = useState(20);
     const [manualOptCount, setManualOptCount] = useState(5);
     const [manualAnswerKey, setManualAnswerKey] = useState({});
@@ -82,6 +181,7 @@ export default function AnswerKeysPage() {
     const [showImportModal, setShowImportModal] = useState(false);
     const [importStep, setImportStep] = useState('upload'); // 'upload' | 'preview'
     const [importBookName, setImportBookName] = useState('');
+    const [importUnitName, setImportUnitName] = useState('');
     const [importFile, setImportFile] = useState(null);
     const [importing, setImporting] = useState(false);
     const [importError, setImportError] = useState('');
@@ -92,6 +192,9 @@ export default function AnswerKeysPage() {
     // Silme
     const [confirmDelete, setConfirmDelete] = useState(null);
     const [deleting, setDeleting] = useState(null);
+
+    // Kategori filtre
+    const [filterCategory, setFilterCategory] = useState('all');
 
     useEffect(() => { if (profile) fetchTemplates(); }, [profile]);
 
@@ -106,9 +209,33 @@ export default function AnswerKeysPage() {
         setLoading(false);
     };
 
+    // ── Kategorilere ayır ────────────────────────────────────────────────────
+    const groupedTemplates = useMemo(() => {
+        const groups = {};
+        templates.forEach((t) => {
+            const cat = t.category || 'Kategorisiz';
+            if (!groups[cat]) groups[cat] = [];
+            groups[cat].push(t);
+        });
+        return groups;
+    }, [templates]);
+
+    const categories = useMemo(() => Object.keys(groupedTemplates).sort((a, b) => {
+        if (a === 'Kategorisiz') return 1;
+        if (b === 'Kategorisiz') return -1;
+        return a.localeCompare(b, 'tr');
+    }), [groupedTemplates]);
+
+    // Mevcut kategorileri çek (auto-complete için)
+    const existingCategories = useMemo(() => {
+        return [...new Set(templates.map(t => t.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
+    }, [templates]);
+
+    const filteredCategories = filterCategory === 'all' ? categories : categories.filter(c => c === filterCategory);
+
     // ── Manuel modal ──────────────────────────────────────────────────────────
     const openCreateModal = () => {
-        setManualName(''); setManualQCount(20); setManualOptCount(5);
+        setManualName(''); setManualCategory(''); setManualQCount(20); setManualOptCount(5);
         setManualAnswerKey({}); setManualFormStep('info');
         setManualMode('create'); setSelectedTemplate(null);
         setShowManualModal(true);
@@ -125,6 +252,7 @@ export default function AnswerKeysPage() {
         const { error } = await supabase.from('answer_key_templates').insert([{
             teacher_id: profile.id,
             name: manualName.trim(),
+            category: manualCategory.trim() || null,
             question_count: manualQCount,
             option_count: manualOptCount,
             answer_key: answers,
@@ -140,7 +268,7 @@ export default function AnswerKeysPage() {
 
     // ── AI Import modal ───────────────────────────────────────────────────────
     const openImportModal = () => {
-        setImportBookName(''); setImportFile(null);
+        setImportBookName(''); setImportUnitName(''); setImportFile(null);
         setImporting(false); setImportError('');
         setExtractedTemplates([]); setEditedNames({});
         setImportStep('upload'); setShowImportModal(true);
@@ -154,6 +282,9 @@ export default function AnswerKeysPage() {
         const fd = new FormData();
         fd.append('file', importFile);
         fd.append('bookName', importBookName.trim());
+        if (importUnitName.trim()) {
+            fd.append('unitName', importUnitName.trim());
+        }
 
         try {
             const res = await fetch('/api/extract-answer-keys', { method: 'POST', body: fd });
@@ -178,6 +309,7 @@ export default function AnswerKeysPage() {
         const inserts = extractedTemplates.map((t, i) => ({
             teacher_id: profile.id,
             name: editedNames[i] ?? t.name,
+            category: importBookName.trim() || null,
             question_count: t.question_count,
             option_count: t.option_count,
             answer_key: t.answer_key,
@@ -239,6 +371,35 @@ export default function AnswerKeysPage() {
                 </div>
             </div>
 
+            {/* ── Kategori filtre ── */}
+            {categories.length > 1 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                        onClick={() => setFilterCategory('all')}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                            filterCategory === 'all'
+                                ? 'bg-gray-900 text-white shadow-sm'
+                                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                        }`}
+                    >
+                        Tümü ({templates.length})
+                    </button>
+                    {categories.map((cat) => (
+                        <button
+                            key={cat}
+                            onClick={() => setFilterCategory(filterCategory === cat ? 'all' : cat)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                                filterCategory === cat
+                                    ? 'bg-violet-600 text-white shadow-sm'
+                                    : 'bg-violet-50 text-violet-600 hover:bg-violet-100'
+                            }`}
+                        >
+                            {cat} ({groupedTemplates[cat].length})
+                        </button>
+                    ))}
+                </div>
+            )}
+
             {/* ── Sıfır durum ── */}
             {templates.length === 0 ? (
                 <div className="bg-white rounded-xl border border-dashed border-gray-200 p-10 text-center">
@@ -258,54 +419,17 @@ export default function AnswerKeysPage() {
                     </div>
                 </div>
             ) : (
-                <div className="grid gap-3 sm:grid-cols-2">
-                    {templates.map((t) => {
-                        const filled = answeredCount(t.answer_key);
-                        const pct = t.question_count > 0 ? Math.round((filled / t.question_count) * 100) : 0;
-                        const isDeleting = deleting === t.id;
-                        return (
-                            <div
-                                key={t.id}
-                                onClick={() => openViewModal(t)}
-                                className={`bg-white rounded-2xl border border-gray-100 p-5 cursor-pointer hover:border-blue-200 hover:shadow-md transition-all group ${isDeleting ? 'opacity-50 pointer-events-none' : ''}`}
-                            >
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0">
-                                        <p className="font-semibold text-gray-800 text-sm group-hover:text-blue-700 transition-colors truncate">
-                                            {t.name}
-                                        </p>
-                                        <p className="text-xs text-gray-400 mt-1">
-                                            {t.question_count} soru · {t.option_count} şık
-                                        </p>
-                                    </div>
-                                    <button
-                                        onClick={(e) => openDeleteConfirm(e, t)}
-                                        className="shrink-0 p-1.5 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
-                                        title="Sil"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    </button>
-                                </div>
-                                <div className="mt-4">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <span className="text-xs text-gray-400">Dolu cevaplar</span>
-                                        <span className="text-xs font-semibold text-gray-600">{filled}/{t.question_count}</span>
-                                    </div>
-                                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                        <div
-                                            className={`h-full rounded-full transition-all ${pct === 100 ? 'bg-emerald-500' : pct > 50 ? 'bg-amber-400' : 'bg-gray-300'}`}
-                                            style={{ width: `${pct}%` }}
-                                        />
-                                    </div>
-                                </div>
-                                <p className="text-xs text-gray-300 mt-3">
-                                    {new Date(t.created_at).toLocaleDateString('tr-TR')}
-                                </p>
-                            </div>
-                        );
-                    })}
+                <div className="space-y-4">
+                    {filteredCategories.map((cat) => (
+                        <CategoryGroup
+                            key={cat}
+                            category={cat}
+                            templates={groupedTemplates[cat]}
+                            openViewModal={openViewModal}
+                            openDeleteConfirm={openDeleteConfirm}
+                            deleting={deleting}
+                        />
+                    ))}
                 </div>
             )}
 
@@ -329,10 +453,15 @@ export default function AnswerKeysPage() {
                         <div className="p-6">
                             {manualMode === 'view' && selectedTemplate ? (
                                 <div className="space-y-4">
-                                    <div className="flex gap-4 text-sm text-gray-500">
+                                    <div className="flex gap-4 text-sm text-gray-500 flex-wrap">
                                         <span>📊 {selectedTemplate.question_count} soru</span>
                                         <span>🔢 {selectedTemplate.option_count} şık</span>
                                         <span>✅ {answeredCount(selectedTemplate.answer_key)} cevap</span>
+                                        {selectedTemplate.category && (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-violet-50 text-violet-600 rounded-lg text-xs font-medium">
+                                                📚 {selectedTemplate.category}
+                                            </span>
+                                        )}
                                     </div>
                                     <OpticalForm
                                         questionCount={selectedTemplate.question_count}
@@ -350,6 +479,26 @@ export default function AnswerKeysPage() {
                                             placeholder="Örn: Hız Hibrit Test 1" autoFocus
                                             className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm"
                                         />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-600 mb-1.5">
+                                            Kategori (Kitap Adı)
+                                            <span className="text-xs text-gray-400 ml-1">— isteğe bağlı</span>
+                                        </label>
+                                        <input
+                                            type="text" value={manualCategory} onChange={(e) => setManualCategory(e.target.value)}
+                                            placeholder="Örn: Hız Hibrit, Karekök Matematik..."
+                                            list="category-suggestions"
+                                            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-violet-400 focus:ring-2 focus:ring-violet-100 outline-none transition-all text-sm"
+                                        />
+                                        <datalist id="category-suggestions">
+                                            {existingCategories.map((cat) => (
+                                                <option key={cat} value={cat} />
+                                            ))}
+                                        </datalist>
+                                        <p className="text-xs text-gray-400 mt-1.5">
+                                            Aynı kitaba ait testleri gruplamak için kitap adını girin.
+                                        </p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-600 mb-1.5">Soru Sayısı</label>
@@ -386,6 +535,12 @@ export default function AnswerKeysPage() {
                                         <button onClick={() => setManualFormStep('info')} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">← Geri</button>
                                         <span className="text-xs text-gray-300">|</span>
                                         <p className="text-xs text-gray-500"><strong>{manualName}</strong> · {manualQCount} soru · {manualOptCount} şık</p>
+                                        {manualCategory.trim() && (
+                                            <>
+                                                <span className="text-xs text-gray-300">|</span>
+                                                <span className="text-xs text-violet-500 font-medium">📚 {manualCategory}</span>
+                                            </>
+                                        )}
                                     </div>
                                     <OpticalForm
                                         questionCount={manualQCount} optionCount={manualOptCount}
@@ -437,10 +592,37 @@ export default function AnswerKeysPage() {
                                             type="text" value={importBookName} onChange={(e) => setImportBookName(e.target.value)}
                                             placeholder="Örn: Hız Hibrit, Karekök Matematik..."
                                             autoFocus
+                                            list="import-category-suggestions"
+                                            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-violet-400 focus:ring-2 focus:ring-violet-100 outline-none transition-all text-sm"
+                                        />
+                                        <datalist id="import-category-suggestions">
+                                            {existingCategories.map((cat) => (
+                                                <option key={cat} value={cat} />
+                                            ))}
+                                        </datalist>
+                                        <p className="text-xs text-gray-400 mt-1.5">
+                                            Bu isim <span className="font-medium text-violet-500">kategori</span> olarak kullanılacak.
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-600 mb-1.5">
+                                            Ünite / Bölüm Adı
+                                            <span className="text-xs text-gray-400 ml-1">— isteğe bağlı</span>
+                                        </label>
+                                        <input
+                                            type="text" value={importUnitName} onChange={(e) => setImportUnitName(e.target.value)}
+                                            placeholder="Örn: 1. Ünite Çarpanlar ve Katlar..."
                                             className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-violet-400 focus:ring-2 focus:ring-violet-100 outline-none transition-all text-sm"
                                         />
                                         <p className="text-xs text-gray-400 mt-1.5">
-                                            Testler bu isimle adlandırılacak: <span className="font-medium text-gray-500">{importBookName ? `"${importBookName} Test 1", "${importBookName} Test 2"...` : '"Kitap Adı Test 1"...'}</span>
+                                            Testler şu şekilde adlandırılacak: <span className="font-medium text-gray-500">
+                                                {importBookName && importUnitName
+                                                    ? `"${importBookName} - ${importUnitName} Test 1", "${importBookName} - ${importUnitName} Test 2"...`
+                                                    : importBookName
+                                                        ? `"${importBookName} Test 1", "${importBookName} Test 2"...`
+                                                        : '"Kitap Adı - Ünite Adı Test 1"...'}
+                                            </span>
                                         </p>
                                     </div>
 
@@ -486,6 +668,11 @@ export default function AnswerKeysPage() {
                                     <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-700 flex items-center gap-2">
                                         <span>✅</span>
                                         <span><strong>{extractedTemplates.length} test</strong> başarıyla çıkarıldı. İsimleri düzenleyebilirsiniz.</span>
+                                    </div>
+
+                                    <div className="p-3 bg-violet-50 border border-violet-200 rounded-xl text-sm text-violet-700 flex items-center gap-2">
+                                        <span>📚</span>
+                                        <span>Kategori: <strong>{importBookName}</strong></span>
                                     </div>
 
                                     <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">

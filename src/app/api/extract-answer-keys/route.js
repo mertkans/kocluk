@@ -71,6 +71,7 @@ export async function POST(request) {
         const formData = await request.formData();
         const file = formData.get('file');
         const bookName = formData.get('bookName')?.trim();
+        const unitName = formData.get('unitName')?.trim();
 
         if (!file || !bookName) {
             return Response.json(
@@ -175,7 +176,9 @@ Görevin:
                 }
             }
             return {
-                name: `${bookName} Test ${t.test_number}`,
+                name: unitName
+                    ? `${bookName} - ${unitName} Test ${t.test_number}`
+                    : `${bookName} Test ${t.test_number}`,
                 question_count: t.question_count,
                 option_count: t.option_count || 5,
                 answer_key: answerKey,

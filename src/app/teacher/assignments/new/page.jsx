@@ -63,7 +63,7 @@ export default function NewAssignmentPage() {
     const fetchAnswerKeyTemplates = async () => {
         const { data } = await supabase
             .from('answer_key_templates')
-            .select('id, name, question_count, option_count, answer_key')
+            .select('id, name, question_count, option_count, answer_key, category')
             .eq('teacher_id', profile.id)
             .order('name');
         setAnswerKeyTemplates(data || []);
@@ -318,31 +318,55 @@ export default function NewAssignmentPage() {
                                 </div>
                             </div>
 
-                            {templatePickerOpen && (
-                                <div className="mt-3 border-t border-gray-100 pt-3 grid gap-2 sm:grid-cols-2">
-                                    {answerKeyTemplates.map((t) => (
-                                        <button
-                                            key={t.id}
-                                            onClick={() => applyTemplate(t)}
-                                            className={`flex items-center justify-between px-3 py-3 rounded-xl border-2 text-left transition-all ${
-                                                appliedTemplate?.id === t.id
-                                                    ? 'border-blue-500 bg-blue-50'
-                                                    : 'border-gray-100 hover:border-blue-200 hover:bg-blue-50/50'
-                                            }`}
-                                        >
-                                            <div className="min-w-0">
-                                                <p className="text-sm font-semibold text-gray-800 truncate">{t.name}</p>
-                                                <p className="text-xs text-gray-400 mt-0.5">
-                                                    {t.question_count} soru · {t.option_count} şık
+                            {templatePickerOpen && (() => {
+                                // Kategorilere ayır
+                                const grouped = {};
+                                answerKeyTemplates.forEach((t) => {
+                                    const cat = t.category || 'Kategorisiz';
+                                    if (!grouped[cat]) grouped[cat] = [];
+                                    grouped[cat].push(t);
+                                });
+                                const cats = Object.keys(grouped).sort((a, b) => {
+                                    if (a === 'Kategorisiz') return 1;
+                                    if (b === 'Kategorisiz') return -1;
+                                    return a.localeCompare(b, 'tr');
+                                });
+                                return (
+                                    <div className="mt-3 border-t border-gray-100 pt-3 space-y-3 max-h-[320px] overflow-y-auto">
+                                        {cats.map((cat) => (
+                                            <div key={cat}>
+                                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                                                    <span className="w-5 h-5 rounded-md bg-violet-100 flex items-center justify-center text-violet-600 text-[10px]">📚</span>
+                                                    {cat}
                                                 </p>
+                                                <div className="grid gap-2 sm:grid-cols-2">
+                                                    {grouped[cat].map((t) => (
+                                                        <button
+                                                            key={t.id}
+                                                            onClick={() => applyTemplate(t)}
+                                                            className={`flex items-center justify-between px-3 py-3 rounded-xl border-2 text-left transition-all ${
+                                                                appliedTemplate?.id === t.id
+                                                                    ? 'border-blue-500 bg-blue-50'
+                                                                    : 'border-gray-100 hover:border-blue-200 hover:bg-blue-50/50'
+                                                            }`}
+                                                        >
+                                                            <div className="min-w-0">
+                                                                <p className="text-sm font-semibold text-gray-800 truncate">{t.name}</p>
+                                                                <p className="text-xs text-gray-400 mt-0.5">
+                                                                    {t.question_count} soru · {t.option_count} şık
+                                                                </p>
+                                                            </div>
+                                                            {appliedTemplate?.id === t.id && (
+                                                                <span className="shrink-0 ml-2 text-blue-600 text-lg">✓</span>
+                                                            )}
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             </div>
-                                            {appliedTemplate?.id === t.id && (
-                                                <span className="shrink-0 ml-2 text-blue-600 text-lg">✓</span>
-                                            )}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
+                                        ))}
+                                    </div>
+                                );
+                            })()}
                         </div>
                     )}
 
