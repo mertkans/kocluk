@@ -1,0 +1,23 @@
+-- =============================================
+-- ÇOKLU TEST DESTEĞİ — MIGRATION
+-- =============================================
+-- Supabase SQL Editor'de çalıştırın.
+--
+-- assignments tablosuna "tests" JSONB sütunu eklenir.
+-- Bu sütun birden fazla test içeren ödevler için kullanılır.
+-- NULL ise eski format (answer_key, question_count, option_count) kullanılır.
+--
+-- tests yapısı:
+-- [
+--   {
+--     "id": "test_0",
+--     "name": "Test 1",
+--     "question_count": 20,
+--     "option_count": 5,
+--     "answer_key": { "1": "A", "2": "B", ... },
+--     "question_topics": { "1": "topic-uuid", ... }
+--   },
+--   ...
+-- ]
+
+ALTER TABLE assignments ADD COLUMN IF NOT EXISTS tests JSONB DEFAULT NULL;

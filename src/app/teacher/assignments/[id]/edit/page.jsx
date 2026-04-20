@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthProvider';
 import { supabase } from '@/lib/supabaseClient';
 import OpticalForm from '@/components/OpticalForm';
+import { getAssignmentTests } from '@/lib/evaluate';
 import { format } from 'date-fns';
 
 export default function EditAssignmentPage() {
@@ -15,13 +16,11 @@ export default function EditAssignmentPage() {
     const [saving, setSaving] = useState(false);
 
     const [title, setTitle] = useState('');
-    const [questionCount, setQuestionCount] = useState(20);
-    const [optionCount, setOptionCount] = useState(5);
-    const [answerKey, setAnswerKey] = useState({});
-    const [questionTopics, setQuestionTopics] = useState({});
-    const [topics, setTopics] = useState([]);
-    const [showAnswerEdit, setShowAnswerEdit] = useState(false);
     const [dueDate, setDueDate] = useState('');
+    const [tests, setTests] = useState([]);
+    const [topics, setTopics] = useState([]);
+    const [answerKeyTemplates, setAnswerKeyTemplates] = useState([]);
+    const [isLegacy, setIsLegacy] = useState(false); // eski format ödev mi?
 
     useEffect(() => {
         if (profile && id) fetchData();
@@ -38,16 +37,21 @@ export default function EditAssignmentPage() {
 
         if (assignment) {
             setTitle(assignment.title);
-            setQuestionCount(assignment.question_count);
-            setOptionCount(assignment.option_count);
-            setAnswerKey(assignment.answer_key || {});
-            setQuestionTopics(assignment.question_topics || {});
-            
+
             if (assignment.due_date) {
-                // Remove the Z and adjust for datetime-local format
                 const d = new Date(assignment.due_date);
                 setDueDate(format(d, "yyyy-MM-dd'T'HH:mm"));
             }
+
+            // Test listesini çıkar
+            const assignmentTests = getAssignmentTests(assignment);
+            const legacy = !assignment.tests || !Array.isArray(assignment.tests) || assignment.tests.length === 0;
+            setIsLegacy(legacy);
+
+            setTests(assignmentTests.map((t, i) => ({
+                ...t,
+                _expanded: false,
+            })));
         }
 
         const { data: topicsData } = await supabase
@@ -56,6 +60,13 @@ export default function EditAssignmentPage() {
             .eq('teacher_id', profile.id)
             .order('name');
         setTopics(topicsData || []);
+
+        const { data: templatesData } = await supabase
+            .from('answer_key_templates')
+            .select('id, name, question_count, option_count, answer_key, category')
+            .eq('teacher_id', profile.id)
+            .order('name');
+        setAnswerKeyTemplates(templatesData || []);
 
         setLoading(false);
     };
@@ -77,6 +88,10 @@ export default function EditAssignmentPage() {
         setTopics((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
     };
 
+    const updateTest = useCallback((index, updatedTest) => {
+        setTests((prev) => prev.map((t, i) => (i === index ? updatedTest : t)));
+    }, []);
+
     const handleSave = async () => {
         if (!title.trim()) {
             alert('Ödev başlığı boş olamaz.');
@@ -84,14 +99,32 @@ export default function EditAssignmentPage() {
         }
         setSaving(true);
 
+        // Tests dizisini temizle
+        const cleanTests = tests.map((t, i) => ({
+            id: t.id || `test_${i}`,
+            name: t.name || `Test ${i + 1}`,
+            question_count: t.question_count,
+            option_count: t.option_count,
+            answer_key: t.answer_key,
+            question_topics: t.question_topics || {},
+        }));
+
+        const firstTest = cleanTests[0];
+
+        const updatePayload = {
+            title,
+            due_date: dueDate ? new Date(dueDate).toISOString() : null,
+            // Ana alanları ilk testten güncelle (geriye dönük uyumluluk)
+            question_count: firstTest.question_count,
+            option_count: firstTest.option_count,
+            answer_key: firstTest.answer_key,
+            question_topics: firstTest.question_topics,
+            tests: cleanTests,
+        };
+
         const { error } = await supabase
             .from('assignments')
-            .update({
-                title,
-                answer_key: answerKey,
-                question_topics: questionTopics,
-                due_date: dueDate ? new Date(dueDate).toISOString() : null,
-            })
+            .update(updatePayload)
             .eq('id', id);
 
         if (error) {
@@ -122,7 +155,7 @@ export default function EditAssignmentPage() {
                 </button>
             </div>
 
-            {/* Başlık */}
+            {/* Başlık + Tarih */}
             <div className="bg-white rounded-2xl border border-gray-100 p-5 sm:p-6 shadow-sm space-y-5">
                 <div>
                     <label className="block text-sm font-medium text-gray-600 mb-1.5">Ödev Başlığı</label>
@@ -134,23 +167,6 @@ export default function EditAssignmentPage() {
                     />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1.5">Soru Sayısı</label>
-                        <div className="px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-sm text-gray-500">
-                            {questionCount} soru
-                        </div>
-                        <p className="text-xs text-gray-400 mt-1">Soru sayısı değiştirilemez</p>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1.5">Şık Sayısı</label>
-                        <div className="px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-sm text-gray-500">
-                            {optionCount} şık
-                        </div>
-                        <p className="text-xs text-gray-400 mt-1">Şık sayısı değiştirilemez</p>
-                    </div>
-                </div>
-
                 <div>
                     <label className="block text-sm font-medium text-gray-600 mb-1.5">Son Teslim Tarihi (Opsiyonel)</label>
                     <input
@@ -160,43 +176,103 @@ export default function EditAssignmentPage() {
                         className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm text-gray-700 bg-white"
                     />
                     <p className="text-xs text-gray-400 mt-1.5">
-                        Belirtilen tarihten sonra gönderilen ödevler "Geç Teslim" olarak işaretlenir. Temizlemek için alanı boşaltın.
+                        Belirtilen tarihten sonra gönderilen ödevler &quot;Geç Teslim&quot; olarak işaretlenir. Temizlemek için alanı boşaltın.
                     </p>
                 </div>
             </div>
 
-            {/* Cevap Anahtarı */}
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-                <button
-                    onClick={() => setShowAnswerEdit(!showAnswerEdit)}
-                    className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-all"
-                >
-                    <h2 className="text-sm font-bold text-gray-700">🔑 Cevap Anahtarını Düzenle</h2>
-                    <span className="text-gray-400 text-xs">
-                        {showAnswerEdit ? 'Gizle ▲' : 'Göster ▼'}
-                    </span>
-                </button>
-                {showAnswerEdit && (
-                    <div className="border-t border-gray-50 p-4">
-                        <OpticalForm
-                            questionCount={questionCount}
-                            optionCount={optionCount}
-                            mode="teacher"
-                            initialAnswers={answerKey}
-                            showTopics={true}
-                            topics={topics}
-                            questionTopics={questionTopics}
-                            onQuestionTopicChange={(qNumber, topicId) => {
-                                setQuestionTopics((prev) => ({ ...prev, [qNumber]: topicId }));
-                            }}
-                            onAddTopic={handleAddTopic}
-                            onSubmit={(answers) => {
-                                setAnswerKey(answers);
-                                setShowAnswerEdit(false);
-                            }}
-                        />
-                    </div>
-                )}
+            {/* Testler */}
+            <div className="flex items-center gap-3">
+                <h2 className="text-base font-bold text-gray-800">📝 Testler</h2>
+                <span className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-full">
+                    {tests.length} test
+                </span>
+            </div>
+
+            <div className="space-y-4">
+                {tests.map((test, index) => {
+                    const expanded = test._expanded;
+                    const answeredCount = Object.keys(test.answer_key || {}).length;
+                    const qt = test.question_topics || {};
+
+                    return (
+                        <div key={test.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                            {/* Header */}
+                            <button
+                                onClick={() => updateTest(index, { ...test, _expanded: !expanded })}
+                                className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50/60 transition-all group"
+                            >
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="shrink-0 w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-sm">
+                                        <span className="text-white text-sm font-bold">{index + 1}</span>
+                                    </div>
+                                    <div className="text-left min-w-0">
+                                        <p className="font-semibold text-gray-800 text-sm truncate">{test.name || `Test ${index + 1}`}</p>
+                                        <p className="text-xs text-gray-400 mt-0.5">
+                                            {test.question_count} soru · {test.option_count} şık · {answeredCount} cevap
+                                        </p>
+                                    </div>
+                                </div>
+                                <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+
+                            {/* Body */}
+                            {expanded && (
+                                <div className="border-t border-gray-100 px-5 py-5 space-y-4">
+                                    {/* Test adı düzenleme */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-600 mb-1.5">Test Adı</label>
+                                        <input
+                                            type="text"
+                                            value={test.name}
+                                            onChange={(e) => updateTest(index, { ...test, name: e.target.value })}
+                                            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm"
+                                        />
+                                    </div>
+
+                                    {/* Soru/Şık sayısı (sadece gösterim) */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-600 mb-1.5">Soru Sayısı</label>
+                                            <div className="px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-sm text-gray-500">
+                                                {test.question_count} soru
+                                            </div>
+                                            <p className="text-xs text-gray-400 mt-1">Soru sayısı değiştirilemez</p>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-600 mb-1.5">Şık Sayısı</label>
+                                            <div className="px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-sm text-gray-500">
+                                                {test.option_count} şık
+                                            </div>
+                                            <p className="text-xs text-gray-400 mt-1">Şık sayısı değiştirilemez</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Optik Form */}
+                                    <OpticalForm
+                                        questionCount={test.question_count}
+                                        optionCount={test.option_count}
+                                        mode="teacher"
+                                        initialAnswers={test.answer_key}
+                                        showTopics={true}
+                                        topics={topics}
+                                        questionTopics={qt}
+                                        onQuestionTopicChange={(qNumber, topicId) => {
+                                            const newTopics = { ...qt, [qNumber]: topicId };
+                                            updateTest(index, { ...test, question_topics: newTopics });
+                                        }}
+                                        onAddTopic={handleAddTopic}
+                                        onSubmit={(answers) => {
+                                            updateTest(index, { ...test, answer_key: answers, _expanded: false });
+                                        }}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
 
             {/* Kaydet Butonu */}

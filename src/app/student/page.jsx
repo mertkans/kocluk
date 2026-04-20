@@ -108,7 +108,9 @@ export default function StudentDashboard() {
                                         {a.title}
                                     </p>
                                     <p className="text-xs text-gray-400 mt-0.5">
-                                        {a.question_count} soru · {a.option_count} şık
+                                        {a.tests && Array.isArray(a.tests) && a.tests.length > 1
+                                            ? `${a.tests.length} test · ${a.tests.reduce((sum, t) => sum + (t.question_count || 0), 0)} soru`
+                                            : `${a.question_count} soru · ${a.option_count} şık`}
                                     </p>
                                 </div>
                                 <span className="shrink-0 ml-3 px-3 py-1.5 bg-amber-50 text-amber-600 text-xs font-semibold rounded-full">
@@ -138,7 +140,9 @@ export default function StudentDashboard() {
                                             {a.title}
                                         </p>
                                         <p className="text-xs text-gray-400 mt-0.5">
-                                            {a.question_count} soru · {a.option_count} şık
+                                            {a.tests && Array.isArray(a.tests) && a.tests.length > 1
+                                                ? `${a.tests.length} test · ${a.tests.reduce((sum, t) => sum + (t.question_count || 0), 0)} soru`
+                                                : `${a.question_count} soru · ${a.option_count} şık`}
                                         </p>
                                     </div>
                                     <div className="shrink-0 ml-3 text-right">

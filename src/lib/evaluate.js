@@ -34,3 +34,70 @@ export function evaluateSubmission(studentAnswers, answerKey) {
         feedback,
     };
 }
+
+/**
+ * Bir assignment objesinden test listesini çıkarır.
+ * Çoklu test varsa (tests alanı dolu) onu döndürür,
+ * yoksa eski tek-test formatını [{ ... }] şeklinde döndürür.
+ * @param {Object} assignment
+ * @returns {Array}
+ */
+export function getAssignmentTests(assignment) {
+    if (assignment.tests && Array.isArray(assignment.tests) && assignment.tests.length > 0) {
+        return assignment.tests;
+    }
+    // Eski format — tek test
+    return [{
+        id: 'test_0',
+        name: assignment.title || 'Test',
+        question_count: assignment.question_count,
+        option_count: assignment.option_count,
+        answer_key: assignment.answer_key || {},
+        question_topics: assignment.question_topics || {},
+    }];
+}
+
+/**
+ * Çoklu test ödevinde öğrencinin tüm cevaplarını değerlendirir.
+ * @param {Object} studentAnswersMap - Örn: { "test_0": { "1": "A", ... }, "test_1": { ... } }
+ * @param {Array}  tests             - getAssignmentTests() çıktısı
+ * @returns {{ perTest: Array, overall: Object }}
+ */
+export function evaluateMultiTestSubmission(studentAnswersMap, tests) {
+    let overallCorrect = 0;
+    let overallIncorrect = 0;
+    let overallEmpty = 0;
+    let overallTotal = 0;
+
+    const perTest = tests.map((test) => {
+        const studentAnswers = studentAnswersMap[test.id] || {};
+        const { score, feedback } = evaluateSubmission(studentAnswers, test.answer_key);
+
+        overallCorrect += score.correct;
+        overallIncorrect += score.incorrect;
+        overallEmpty += score.empty;
+        overallTotal += score.total;
+
+        return {
+            testId: test.id,
+            testName: test.name,
+            score,
+            feedback,
+        };
+    });
+
+    const overallPercentage = overallTotal > 0
+        ? Math.round((overallCorrect / overallTotal) * 100)
+        : 0;
+
+    return {
+        perTest,
+        overall: {
+            total: overallTotal,
+            correct: overallCorrect,
+            incorrect: overallIncorrect,
+            empty: overallEmpty,
+            percentage: overallPercentage,
+        },
+    };
+}

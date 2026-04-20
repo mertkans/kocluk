@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthProvider';
 import { supabase } from '@/lib/supabaseClient';
 import OpticalForm from '@/components/OpticalForm';
+import { getAssignmentTests } from '@/lib/evaluate';
 import dynamic from 'next/dynamic';
 
 const BarChartComponent = dynamic(() => import('recharts').then(mod => {
@@ -106,11 +107,19 @@ export default function AssignmentDetailPage() {
         );
     }
 
+    // Test listesini çıkar
+    const tests = getAssignmentTests(assignment);
+    const isMultiTest = tests.length > 1;
+    const totalQuestions = tests.reduce((sum, t) => sum + (Object.keys(t.answer_key || {}).length || t.question_count), 0);
+
     // İstatistikler
     const submittedCount = submissions.length;
+
+    // Genel ortalama score.percentage kullan (hem eski hem yeni format)
     const avgScore = submissions.length > 0
         ? Math.round(submissions.reduce((acc, s) => acc + (s.score?.percentage || 0), 0) / submissions.length)
         : 0;
+
     const scoreDistribution = [
         { name: '0-25', value: submissions.filter(s => (s.score?.percentage || 0) <= 25).length },
         { name: '26-50', value: submissions.filter(s => (s.score?.percentage || 0) > 25 && (s.score?.percentage || 0) <= 50).length },
@@ -118,32 +127,53 @@ export default function AssignmentDetailPage() {
         { name: '76-100', value: submissions.filter(s => (s.score?.percentage || 0) > 75).length },
     ];
 
-    // Konu bazlı analiz
-    const questionTopics = assignment.question_topics || {};
-    const hasTopics = Object.values(questionTopics).some(Boolean);
+    // Konu bazlı analiz — tüm testler üzerinden
+    const allQuestionTopics = {};
+    const allAnswerKeys = {};
+    tests.forEach((test) => {
+        const qt = test.question_topics || {};
+        const ak = test.answer_key || {};
+        for (const [qNum, topicId] of Object.entries(qt)) {
+            if (topicId) {
+                const key = `${test.id}_${qNum}`;
+                allQuestionTopics[key] = topicId;
+                allAnswerKeys[key] = ak[qNum];
+            }
+        }
+    });
+    const hasTopics = Object.values(allQuestionTopics).some(Boolean);
 
     const topicAnalysis = (() => {
         if (!hasTopics || submissions.length === 0) return [];
 
-        // Her konu için: soru numaraları, doğru/toplam hesaplama
         const topicMap = {};
-        for (const [qNum, topicId] of Object.entries(questionTopics)) {
+        for (const [compositeKey, topicId] of Object.entries(allQuestionTopics)) {
             if (!topicId) continue;
             if (!topicMap[topicId]) {
                 topicMap[topicId] = { questions: [], correct: 0, total: 0 };
             }
-            topicMap[topicId].questions.push(parseInt(qNum));
+            topicMap[topicId].questions.push(compositeKey);
         }
 
-        // Her submission'da her sorunun doğru/yanlış durumuna bak
         for (const sub of submissions) {
             const studentAnswers = sub.answers || {};
-            const ansKey = assignment.answer_key || {};
 
             for (const [topicId, info] of Object.entries(topicMap)) {
-                for (const qNum of info.questions) {
+                for (const compositeKey of info.questions) {
+                    const [testId, qNum] = compositeKey.split('_');
                     info.total++;
-                    if (studentAnswers[qNum] === ansKey[qNum]) {
+
+                    // Çoklu test: answers = { test_0: { 1: "A" }, ... }
+                    // Eski format: answers = { 1: "A", ... }
+                    let studentAnswer;
+                    if (studentAnswers[testId] && typeof studentAnswers[testId] === 'object') {
+                        studentAnswer = studentAnswers[testId][qNum];
+                    } else {
+                        // Eski format
+                        studentAnswer = studentAnswers[qNum];
+                    }
+
+                    if (studentAnswer === allAnswerKeys[compositeKey]) {
                         info.correct++;
                     }
                 }
@@ -169,7 +199,8 @@ export default function AssignmentDetailPage() {
             <div>
                 <h1 className="text-2xl font-bold text-gray-900">{assignment.title}</h1>
                 <p className="text-sm text-gray-400 mt-1">
-                    {assignment.question_count} soru · {assignment.option_count} şık
+                    {isMultiTest ? `${tests.length} test · ` : ''}{totalQuestions} soru
+                    {!isMultiTest && ` · ${assignment.option_count} şık`}
                 </p>
             </div>
 
@@ -251,21 +282,43 @@ export default function AssignmentDetailPage() {
                     onClick={() => setShowAnswerKey(!showAnswerKey)}
                     className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-all"
                 >
-                    <h2 className="text-sm font-bold text-gray-700">🔑 Cevap Anahtarı</h2>
+                    <h2 className="text-sm font-bold text-gray-700">🔑 Cevap Anahtarı {isMultiTest ? `(${tests.length} test)` : ''}</h2>
                     <span className="text-gray-400 text-xs">{showAnswerKey ? 'Gizle ▲' : 'Göster ▼'}</span>
                 </button>
                 {showAnswerKey && (
-                    <div className="border-t border-gray-50 p-4">
-                        <OpticalForm
-                            questionCount={assignment.question_count}
-                            optionCount={assignment.option_count}
-                            mode="teacher"
-                            initialAnswers={assignment.answer_key}
-                            readOnly={true}
-                            showTopics={hasTopics}
-                            topics={topics}
-                            questionTopics={questionTopics}
-                        />
+                    <div className="border-t border-gray-50 p-4 space-y-6">
+                        {tests.map((test, index) => {
+                            const qt = test.question_topics || {};
+                            const testHasTopics = Object.values(qt).some(Boolean);
+                            return (
+                                <div key={test.id}>
+                                    {isMultiTest && (
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center">
+                                                <span className="text-blue-700 text-xs font-bold">{index + 1}</span>
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-semibold text-gray-700">{test.name || `Test ${index + 1}`}</p>
+                                                <p className="text-xs text-gray-400">{test.question_count} soru · {test.option_count} şık</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <OpticalForm
+                                        questionCount={test.question_count}
+                                        optionCount={test.option_count}
+                                        mode="teacher"
+                                        initialAnswers={test.answer_key}
+                                        readOnly={true}
+                                        showTopics={testHasTopics}
+                                        topics={topics}
+                                        questionTopics={qt}
+                                    />
+                                    {isMultiTest && index < tests.length - 1 && (
+                                        <hr className="my-4 border-gray-100" />
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
             </div>

@@ -155,7 +155,9 @@ export default function TeacherPage() {
                                             {a.title}
                                         </p>
                                         <p className="text-xs text-gray-400 mt-0.5">
-                                            {a.question_count} soru · {assignedCount} öğrenci
+                                            {a.tests && Array.isArray(a.tests) && a.tests.length > 1
+                                                ? `${a.tests.length} test · ${a.tests.reduce((sum, t) => sum + (t.question_count || 0), 0)} soru`
+                                                : `${a.question_count} soru`} · {assignedCount} öğrenci
                                         </p>
                                     </div>
                                     <div className="ml-3 shrink-0 text-right">
