@@ -30,7 +30,7 @@ function TestCard({
     const applyTemplate = (template) => {
         onUpdate(index, {
             ...test,
-            name: test.name || template.name,
+            name: template.name,
             question_count: template.question_count,
             option_count: template.option_count,
             answer_key: template.answer_key,
