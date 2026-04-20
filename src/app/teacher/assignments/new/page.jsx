@@ -260,8 +260,8 @@ function TestCard({
                             questionTopics={test.question_topics || {}}
                             onQuestionTopicChange={handleQuestionTopicChange}
                             onAddTopic={onAddTopic}
-                            onSubmit={handleAnswerKeyChange}
-                            submitLabel={`✅ Bu Testin Cevaplarını Kaydet (${answeredCount}/${test.question_count})`}
+                            onChange={handleAnswerKeyChange}
+                            hideSubmit={true}
                         />
                     </div>
                 </div>

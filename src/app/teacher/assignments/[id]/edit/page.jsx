@@ -264,9 +264,10 @@ export default function EditAssignmentPage() {
                                             updateTest(index, { ...test, question_topics: newTopics });
                                         }}
                                         onAddTopic={handleAddTopic}
-                                        onSubmit={(answers) => {
-                                            updateTest(index, { ...test, answer_key: answers, _expanded: false });
+                                        onChange={(answers) => {
+                                            updateTest(index, { ...test, answer_key: answers });
                                         }}
+                                        hideSubmit={true}
                                     />
                                 </div>
                             )}

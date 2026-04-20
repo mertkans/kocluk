@@ -126,6 +126,7 @@ export default function OpticalForm({
     mode = 'student',
     initialAnswers = {},
     onSubmit,
+    onChange,
     readOnly = false,
     feedback = {},
     answerKey = {},
@@ -138,6 +139,7 @@ export default function OpticalForm({
     // Buton özelleştirme
     submitLabel,
     submitDisabled = false,
+    hideSubmit = false,
 }) {
     const [answers, setAnswers] = useState(initialAnswers);
     const [bulkTopicOpen, setBulkTopicOpen] = useState(false);
@@ -157,12 +159,14 @@ export default function OpticalForm({
     const handleSelect = (qNumber, option) => {
         if (readOnly) return;
         setAnswers((prev) => {
-            if (prev[qNumber] === option) {
-                const copy = { ...prev };
+            const copy = { ...prev };
+            if (copy[qNumber] === option) {
                 delete copy[qNumber];
-                return copy;
+            } else {
+                copy[qNumber] = option;
             }
-            return { ...prev, [qNumber]: option };
+            if (onChange) onChange(copy);
+            return copy;
         });
     };
 
@@ -353,7 +357,7 @@ export default function OpticalForm({
             </div>
 
             {/* Gönder butonu */}
-            {!readOnly && (
+            {!hideSubmit && !readOnly && (
                 <div className="mt-6 sticky bottom-4 z-10">
                     <button
                         onClick={handleSubmit}

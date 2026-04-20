@@ -267,8 +267,8 @@ export default function StudentAssignmentPage() {
                             readOnly={isSubmitted}
                             feedback={feedbackMap[test.id] || {}}
                             answerKey={isSubmitted ? test.answer_key : {}}
-                            onSubmit={(answers) => handleTestAnswersChange(test.id, answers)}
-                            submitLabel={isSubmitted ? undefined : `💾 ${test.name || `Test ${index + 1}`} Cevaplarını Kaydet`}
+                            onChange={(answers) => handleTestAnswersChange(test.id, answers)}
+                            hideSubmit={true}
                         />
                     </div>
                 </div>
