@@ -74,6 +74,23 @@ export default function AgendaPage() {
         setAgenda(newAgenda);
     };
 
+    const handleCellKeyDown = (dayIndex, hour, event) => {
+        if (event.key !== 'Enter' || event.shiftKey) return;
+
+        event.preventDefault();
+
+        const nextHour = hour + 1;
+        if (nextHour > 24) return;
+
+        const nextCell = document.querySelector(
+            `textarea[data-day="${dayIndex}"][data-hour="${nextHour}"]`
+        );
+
+        if (nextCell) {
+            nextCell.focus();
+        }
+    };
+
     const totalSlots = DAYS.length * HOURS.length;
     const filledSlots = Object.values(agenda).filter((value) => (value || '').trim().length > 0).length;
     const completionRate = Math.round((filledSlots / totalSlots) * 100);
@@ -158,8 +175,11 @@ export default function AgendaPage() {
                                         return (
                                             <td key={day} className="border-r border-gray-50 p-0 last:border-r-0">
                                                 <textarea
+                                                    data-day={dayIndex}
+                                                    data-hour={hour}
                                                     value={agenda[key] || ''}
                                                     onChange={(e) => handleCellChange(dayIndex, hour, e.target.value)}
+                                                    onKeyDown={(e) => handleCellKeyDown(dayIndex, hour, e)}
                                                     placeholder="Planını yaz"
                                                     className={`h-20 w-full resize-none bg-transparent px-2 py-2 text-center text-xs font-medium text-gray-700 outline-none transition-all placeholder:text-gray-300 focus:bg-sky-50 ${
                                                         hasValue ? 'bg-amber-50/50' : ''
