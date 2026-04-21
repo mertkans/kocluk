@@ -160,7 +160,9 @@ export default function AssignmentDetailPage() {
 
             for (const [topicId, info] of Object.entries(topicMap)) {
                 for (const compositeKey of info.questions) {
-                    const [testId, qNum] = compositeKey.split('_');
+                    const lastUnderscore = compositeKey.lastIndexOf('_');
+                    const testId = compositeKey.substring(0, lastUnderscore);
+                    const qNum = compositeKey.substring(lastUnderscore + 1);
                     info.total++;
 
                     // Çoklu test: answers = { test_0: { 1: "A" }, ... }

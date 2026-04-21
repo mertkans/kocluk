@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { subDays, subMonths, startOfDay } from 'date-fns';
+import { getAssignmentTests } from '@/lib/evaluate';
 
 const HorizontalBarComponent = dynamic(() => import('recharts').then(mod => {
     const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } = mod;
@@ -97,7 +98,7 @@ export default function StudentDetailPage() {
 
         const { data: subsData } = await supabase
             .from('submissions')
-            .select('*, assignments!submissions_assignment_id_fkey(id, title, question_count, option_count, answer_key, question_topics, created_at)')
+            .select('*, assignments!submissions_assignment_id_fkey(id, title, question_count, option_count, answer_key, question_topics, tests, created_at)')
             .eq('student_id', id);
         setSubmissions(subsData || []);
 
@@ -199,14 +200,33 @@ export default function StudentDetailPage() {
         for (const sub of activeSubmissions) {
             const assignment = sub.assignments;
             if (!assignment) continue;
-            const answerKey = assignment.answer_key || {};
-            const studentAnswers = sub.answers || {};
-            totalQuestions += Object.keys(answerKey).length;
-            for (const [qNum, correctAns] of Object.entries(answerKey)) {
-                const sa = studentAnswers[qNum];
-                if (!sa) empty++;
-                else if (sa === correctAns) correct++;
-                else incorrect++;
+
+            const tests = getAssignmentTests(assignment);
+            const studentAnswersRaw = sub.answers || {};
+
+            // Detect format: if answers has test IDs as keys (multi-test) or question numbers (old format)
+            const isNestedFormat = tests.length > 0 && typeof studentAnswersRaw[tests[0].id] === 'object';
+
+            for (const test of tests) {
+                const answerKey = test.answer_key || {};
+                // Get student answers for this specific test
+                let studentAnswers;
+                if (isNestedFormat) {
+                    studentAnswers = studentAnswersRaw[test.id] || {};
+                } else if (tests.length === 1) {
+                    // Old single-test format: answers are flat
+                    studentAnswers = studentAnswersRaw;
+                } else {
+                    studentAnswers = {};
+                }
+
+                totalQuestions += Object.keys(answerKey).length;
+                for (const [qNum, correctAns] of Object.entries(answerKey)) {
+                    const sa = studentAnswers[qNum];
+                    if (!sa) empty++;
+                    else if (sa === correctAns) correct++;
+                    else incorrect++;
+                }
             }
         }
         const percentage = totalQuestions > 0 ? Math.round((correct / totalQuestions) * 100) : 0;
@@ -218,18 +238,34 @@ export default function StudentDetailPage() {
         for (const sub of activeSubmissions) {
             const assignment = sub.assignments;
             if (!assignment) continue;
-            const answerKey = assignment.answer_key || {};
-            const questionTopics = assignment.question_topics || {};
-            const studentAnswers = sub.answers || {};
-            for (const [qNum, correctAns] of Object.entries(answerKey)) {
-                const topicId = questionTopics[qNum];
-                if (!topicId) continue;
-                if (!topicMap[topicId]) topicMap[topicId] = { total: 0, correct: 0, incorrect: 0, empty: 0 };
-                const sa = studentAnswers[qNum];
-                topicMap[topicId].total++;
-                if (!sa) topicMap[topicId].empty++;
-                else if (sa === correctAns) topicMap[topicId].correct++;
-                else topicMap[topicId].incorrect++;
+
+            const tests = getAssignmentTests(assignment);
+            const studentAnswersRaw = sub.answers || {};
+            const isNestedFormat = tests.length > 0 && typeof studentAnswersRaw[tests[0].id] === 'object';
+
+            for (const test of tests) {
+                const answerKey = test.answer_key || {};
+                const questionTopics = test.question_topics || {};
+
+                let studentAnswers;
+                if (isNestedFormat) {
+                    studentAnswers = studentAnswersRaw[test.id] || {};
+                } else if (tests.length === 1) {
+                    studentAnswers = studentAnswersRaw;
+                } else {
+                    studentAnswers = {};
+                }
+
+                for (const [qNum, correctAns] of Object.entries(answerKey)) {
+                    const topicId = questionTopics[qNum];
+                    if (!topicId) continue;
+                    if (!topicMap[topicId]) topicMap[topicId] = { total: 0, correct: 0, incorrect: 0, empty: 0 };
+                    const sa = studentAnswers[qNum];
+                    topicMap[topicId].total++;
+                    if (!sa) topicMap[topicId].empty++;
+                    else if (sa === correctAns) topicMap[topicId].correct++;
+                    else topicMap[topicId].incorrect++;
+                }
             }
         }
         return Object.entries(topicMap)
