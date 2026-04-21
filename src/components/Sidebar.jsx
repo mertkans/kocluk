@@ -18,11 +18,16 @@ const menuSections = {
             { href: '/teacher/students', label: 'Öğrencilerim', icon: '👨‍🎓' },
             { href: '/teacher/assignments', label: 'Ödevler', icon: '📋' },
         ]},
-        { label: 'Tanımlamalar', items: [
-            { href: '/teacher/classes', label: 'Sınıflar', icon: '🏫' },
-            { href: '/teacher/topics', label: 'Konular', icon: '📎' },
-            { href: '/teacher/answer-keys', label: 'Cevap Anahtarları', icon: '🔑' },
-        ]},
+        { 
+            label: 'Tanımlamalar', 
+            icon: '⚙️', 
+            isCollapsible: true,
+            items: [
+                { href: '/teacher/classes', label: 'Sınıflar', icon: '🏫' },
+                { href: '/teacher/topics', label: 'Konular', icon: '📎' },
+                { href: '/teacher/answer-keys', label: 'Cevap Anahtarları', icon: '🔑' },
+            ]
+        },
     ],
     student: [
         { label: 'Genel', items: [
@@ -47,6 +52,14 @@ export default function Sidebar() {
     const { profile, signOut } = useAuth();
     const pathname = usePathname();
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [expandedSections, setExpandedSections] = useState({});
+
+    const toggleSection = (label) => {
+        setExpandedSections(prev => ({
+            ...prev,
+            [label]: !prev[label]
+        }));
+    };
 
     if (!profile) return null;
 
@@ -69,29 +82,67 @@ export default function Sidebar() {
             <nav className="flex-1 px-3 mt-2 overflow-y-auto">
                 {sections.map((section) => (
                     <div key={section.label} className="mb-4">
-                        <h3 className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
-                            {section.label}
-                        </h3>
-                        <ul className="space-y-1">
-                            {section.items.map((item) => {
-                                const isActive = pathname === item.href;
-                                return (
-                                    <li key={item.href}>
-                                        <Link
-                                            href={item.href}
-                                            onClick={() => setMobileOpen(false)}
-                                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive
-                                                    ? 'bg-gray-900 text-white shadow-sm'
-                                                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                                                }`}
-                                        >
-                                            <span className="text-lg">{item.icon}</span>
-                                            {item.label}
-                                        </Link>
-                                    </li>
-                                );
-                            })}
-                        </ul>
+                        {section.isCollapsible ? (
+                            <div>
+                                <button
+                                    onClick={() => toggleSection(section.label)}
+                                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-all"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-lg">{expandedSections[section.label] ? '−' : '+'}</span>
+                                        {section.label}
+                                    </div>
+                                </button>
+                                {expandedSections[section.label] && (
+                                    <ul className="mt-1 ml-4 space-y-1 border-l-2 border-gray-50 pl-2">
+                                        {section.items.map((item) => {
+                                            const isActive = pathname === item.href;
+                                            return (
+                                                <li key={item.href}>
+                                                    <Link
+                                                        href={item.href}
+                                                        onClick={() => setMobileOpen(false)}
+                                                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all ${isActive
+                                                                ? 'bg-gray-900 text-white shadow-sm'
+                                                                : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+                                                            }`}
+                                                    >
+                                                        <span className="text-base">{item.icon}</span>
+                                                        {item.label}
+                                                    </Link>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                )}
+                            </div>
+                        ) : (
+                            <>
+                                <h3 className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                                    {section.label}
+                                </h3>
+                                <ul className="space-y-1">
+                                    {section.items.map((item) => {
+                                        const isActive = pathname === item.href;
+                                        return (
+                                            <li key={item.href}>
+                                                <Link
+                                                    href={item.href}
+                                                    onClick={() => setMobileOpen(false)}
+                                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive
+                                                            ? 'bg-gray-900 text-white shadow-sm'
+                                                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                                                        }`}
+                                                >
+                                                    <span className="text-lg">{item.icon}</span>
+                                                    {item.label}
+                                                </Link>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            </>
+                        )}
                     </div>
                 ))}
             </nav>
