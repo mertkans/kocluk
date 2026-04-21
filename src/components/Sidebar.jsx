@@ -5,21 +5,29 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthProvider';
 import { useState } from 'react';
 
-const menuItems = {
+const menuSections = {
     admin: [
-        { href: '/admin', label: 'Ana Sayfa', icon: '📊' },
-        { href: '/admin/users', label: 'Kullanıcılar', icon: '👥' },
+        { label: 'Genel', items: [
+            { href: '/admin', label: 'Ana Sayfa', icon: '📊' },
+            { href: '/admin/users', label: 'Kullanıcılar', icon: '👥' },
+        ]},
     ],
     teacher: [
-        { href: '/teacher', label: 'Ana Sayfa', icon: '📊' },
-        { href: '/teacher/students', label: 'Öğrencilerim', icon: '👨‍🎓' },
-        { href: '/teacher/classes', label: 'Sınıflar', icon: '🏫' },
-        { href: '/teacher/topics', label: 'Konular', icon: '📎' },
-        { href: '/teacher/answer-keys', label: 'Cevap Anahtarları', icon: '🔑' },
-        { href: '/teacher/assignments', label: 'Ödevler', icon: '📋' },
+        { label: 'Genel', items: [
+            { href: '/teacher', label: 'Ana Sayfa', icon: '📊' },
+            { href: '/teacher/students', label: 'Öğrencilerim', icon: '👨‍🎓' },
+            { href: '/teacher/assignments', label: 'Ödevler', icon: '📋' },
+        ]},
+        { label: 'Tanımlamalar', items: [
+            { href: '/teacher/classes', label: 'Sınıflar', icon: '🏫' },
+            { href: '/teacher/topics', label: 'Konular', icon: '📎' },
+            { href: '/teacher/answer-keys', label: 'Cevap Anahtarları', icon: '🔑' },
+        ]},
     ],
     student: [
-        { href: '/student', label: 'Ödevlerim', icon: '📋' },
+        { label: 'Genel', items: [
+            { href: '/student', label: 'Ödevlerim', icon: '📋' },
+        ]},
     ],
 };
 
@@ -42,7 +50,7 @@ export default function Sidebar() {
 
     if (!profile) return null;
 
-    const items = menuItems[profile.role] || [];
+    const sections = menuSections[profile.role] || [];
 
     const navContent = (
         <>
@@ -58,27 +66,34 @@ export default function Sidebar() {
             </div>
 
             {/* Navigasyon */}
-            <nav className="flex-1 px-3 mt-2">
-                <ul className="space-y-1">
-                    {items.map((item) => {
-                        const isActive = pathname === item.href;
-                        return (
-                            <li key={item.href}>
-                                <Link
-                                    href={item.href}
-                                    onClick={() => setMobileOpen(false)}
-                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive
-                                            ? 'bg-gray-900 text-white shadow-sm'
-                                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                                        }`}
-                                >
-                                    <span className="text-lg">{item.icon}</span>
-                                    {item.label}
-                                </Link>
-                            </li>
-                        );
-                    })}
-                </ul>
+            <nav className="flex-1 px-3 mt-2 overflow-y-auto">
+                {sections.map((section) => (
+                    <div key={section.label} className="mb-4">
+                        <h3 className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                            {section.label}
+                        </h3>
+                        <ul className="space-y-1">
+                            {section.items.map((item) => {
+                                const isActive = pathname === item.href;
+                                return (
+                                    <li key={item.href}>
+                                        <Link
+                                            href={item.href}
+                                            onClick={() => setMobileOpen(false)}
+                                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive
+                                                    ? 'bg-gray-900 text-white shadow-sm'
+                                                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                                                }`}
+                                        >
+                                            <span className="text-lg">{item.icon}</span>
+                                            {item.label}
+                                        </Link>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </div>
+                ))}
             </nav>
 
             {/* Çıkış */}
