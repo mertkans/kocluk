@@ -104,7 +104,7 @@ export default function AgendaPage() {
                 <div className="absolute -left-12 -bottom-12 h-40 w-40 rounded-full bg-amber-200/40 blur-2xl" />
 
                 <div className="relative flex flex-col items-center gap-4 text-center">
-                    <h1 className="text-3xl font-black tracking-tight text-gray-900">Ajandam</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">Ajandam</h1>
                     <p className="max-w-2xl text-sm text-gray-600">
                         Haftalık çalışma planını gün gün düzenle. Her kutuya ders, konu veya tekrar notu yaz.
                     </p>
@@ -126,9 +126,9 @@ export default function AgendaPage() {
                     <table className="min-w-[900px] w-full border-collapse">
                         <thead>
                             <tr className="bg-gradient-to-r from-gray-50 to-sky-50 border-b border-gray-100">
-                                <th className="w-24 border-r border-gray-100 px-4 py-4 text-center text-xs font-black uppercase tracking-wider text-gray-500">Saat</th>
+                                <th className="w-24 border-r border-gray-100 px-4 py-4 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">Saat</th>
                                 {DAYS.map((day) => (
-                                    <th key={day} className="px-4 py-4 text-center text-xs font-black uppercase tracking-wider text-gray-500">
+                                    <th key={day} className="px-4 py-4 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">
                                         {day}
                                     </th>
                                 ))}
@@ -136,9 +136,9 @@ export default function AgendaPage() {
                         </thead>
                         <tbody>
                             {HOURS.map((hour) => (
-                                <tr key={hour} className="border-b border-gray-50 last:border-0">
-                                    <td className="border-r border-gray-100 bg-gray-50/70 px-2 py-3 text-center">
-                                        <span className="text-xs font-extrabold text-gray-700">
+                                <tr key={hour} className="h-10 border-b border-gray-50 last:border-0">
+                                    <td className="h-10 border-r border-gray-100 bg-gray-50/70 px-2 py-1 text-center">
+                                        <span className="text-xs font-semibold text-gray-700">
                                             {hour.toString().padStart(2, '0')}:00
                                         </span>
                                     </td>
@@ -154,7 +154,7 @@ export default function AgendaPage() {
                                                     onChange={(e) => handleCellChange(dayIndex, hour, e.target.value)}
                                                     onKeyDown={(e) => handleCellKeyDown(dayIndex, hour, e)}
                                                     placeholder="Planını yaz"
-                                                    className={`h-20 w-full resize-none bg-transparent px-2 py-2 text-center text-xs font-medium text-gray-700 outline-none transition-all placeholder:text-gray-300 focus:bg-sky-50 ${
+                                                    className={`h-full w-full resize-none bg-transparent px-2 py-1 text-center text-xs font-medium text-gray-700 outline-none transition-all placeholder:text-gray-300 focus:bg-sky-50 ${
                                                         hasValue ? 'bg-amber-50/50' : ''
                                                     }`}
                                                 />
@@ -173,7 +173,7 @@ export default function AgendaPage() {
                     <button
                         onClick={() => saveAgenda(agenda)}
                         disabled={saving}
-                        className={`rounded-xl px-7 py-3 text-sm font-bold text-white transition-all ${
+                        className={`rounded-xl px-7 py-3 text-sm font-semibold text-white transition-all ${
                             saving
                                 ? 'cursor-not-allowed bg-gray-400'
                                 : 'bg-gradient-to-r from-sky-600 to-cyan-600 shadow-lg shadow-cyan-100 hover:scale-[1.01] hover:from-sky-700 hover:to-cyan-700'
@@ -186,15 +186,15 @@ export default function AgendaPage() {
                 <div className="mt-5 grid w-full grid-cols-1 gap-3 sm:grid-cols-3">
                     <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 text-center shadow-sm">
                         <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Toplam Dilim</p>
-                        <p className="mt-1 text-2xl font-black text-gray-900">{totalSlots}</p>
+                        <p className="mt-1 text-2xl font-bold text-gray-900">{totalSlots}</p>
                     </div>
                     <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 text-center shadow-sm">
                         <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Dolu Dilim</p>
-                        <p className="mt-1 text-2xl font-black text-sky-600">{filledSlots}</p>
+                        <p className="mt-1 text-2xl font-bold text-sky-600">{filledSlots}</p>
                     </div>
                     <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 text-center shadow-sm">
                         <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Tamamlanma</p>
-                        <p className="mt-1 text-2xl font-black text-emerald-600">%{completionRate}</p>
+                        <p className="mt-1 text-2xl font-bold text-emerald-600">%{completionRate}</p>
                     </div>
                 </div>
             </div>
