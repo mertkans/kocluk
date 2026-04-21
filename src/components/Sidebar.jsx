@@ -32,6 +32,7 @@ const menuSections = {
     student: [
         { label: 'Genel', items: [
             { href: '/student', label: 'Ödevlerim', icon: '📋' },
+            { href: '/student/agenda', label: 'Ajandam', icon: '📅' },
         ]},
     ],
 };
