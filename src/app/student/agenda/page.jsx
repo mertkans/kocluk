@@ -74,84 +74,105 @@ export default function AgendaPage() {
         setAgenda(newAgenda);
     };
 
+    const totalSlots = DAYS.length * HOURS.length;
+    const filledSlots = Object.values(agenda).filter((value) => (value || '').trim().length > 0).length;
+    const completionRate = Math.round((filledSlots / totalSlots) * 100);
+
     if (loading) return <div className="p-8 text-center text-gray-500">Yükleniyor...</div>;
 
     return (
         <div className="max-w-7xl mx-auto space-y-6 pb-20">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">📅 Haftalık Ajandam</h1>
-                    <p className="text-sm text-gray-500">Haftalık çalışma planını buradan düzenleyebilirsin.</p>
+            <div className="relative overflow-hidden rounded-3xl border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-amber-50 p-6 sm:p-8">
+                <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-sky-200/40 blur-2xl" />
+                <div className="absolute -left-12 -bottom-12 h-40 w-40 rounded-full bg-amber-200/40 blur-2xl" />
+
+                <div className="relative flex flex-col items-center gap-4 text-center">
+                    <h1 className="text-3xl font-black tracking-tight text-gray-900">Ajandam</h1>
+                    <p className="max-w-2xl text-sm text-gray-600">
+                        Haftalık çalışma planını gün gün düzenle. Her kutuya ders, konu veya tekrar notu yaz.
+                    </p>
+
+                    <div className="grid w-full max-w-3xl grid-cols-1 gap-3 sm:grid-cols-3">
+                        <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 shadow-sm">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Toplam Dilim</p>
+                            <p className="mt-1 text-2xl font-black text-gray-900">{totalSlots}</p>
+                        </div>
+                        <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 shadow-sm">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Dolu Dilim</p>
+                            <p className="mt-1 text-2xl font-black text-sky-600">{filledSlots}</p>
+                        </div>
+                        <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 shadow-sm">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Tamamlanma</p>
+                            <p className="mt-1 text-2xl font-black text-emerald-600">%{completionRate}</p>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={() => saveAgenda(agenda)}
+                        disabled={saving}
+                        className={`mt-2 rounded-xl px-7 py-3 text-sm font-bold text-white transition-all ${
+                            saving
+                                ? 'cursor-not-allowed bg-gray-400'
+                                : 'bg-gradient-to-r from-sky-600 to-cyan-600 shadow-lg shadow-cyan-100 hover:scale-[1.01] hover:from-sky-700 hover:to-cyan-700'
+                        }`}
+                    >
+                        {saving ? 'Kaydediliyor...' : 'Planı Kaydet'}
+                    </button>
                 </div>
-                <button
-                    onClick={() => saveAgenda(agenda)}
-                    disabled={saving}
-                    className={`px-6 py-2 rounded-lg font-semibold text-white transition-all ${
-                        saving ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 shadow-md active:scale-95'
-                    }`}
-                >
-                    {saving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
-                </button>
             </div>
 
             {message && (
-                <div className={`p-4 rounded-lg text-sm font-medium ${
-                    message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 
-                    'bg-blue-50 text-blue-700 border border-blue-100'
+                <div className={`rounded-xl border p-4 text-center text-sm font-semibold ${
+                    message.type === 'success'
+                        ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
+                        : 'border-sky-100 bg-sky-50 text-sky-700'
                 }`}>
                     {message.text}
                 </div>
             )}
 
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden overflow-x-auto">
-                <table className="w-full border-collapse min-w-[800px]">
-                    <thead>
-                        <tr className="bg-gray-50 border-b border-gray-100">
-                            <th className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-center border-r border-gray-100 w-24">Saat</th>
-                            {DAYS.map(day => (
-                                <th key={day} className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-center">
-                                    {day}
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {HOURS.map(hour => (
-                            <tr key={hour} className="border-b border-gray-50 last:border-0 group">
-                                <td className="py-3 px-2 text-center bg-gray-50/50 border-r border-gray-100">
-                                    <span className="text-xs font-bold text-gray-600">
-                                        {hour.toString().padStart(2, '0')}:00
-                                    </span>
-                                </td>
-                                {DAYS.map((day, dayIndex) => {
-                                    const key = `${dayIndex}-${hour}`;
-                                    return (
-                                        <td key={day} className="p-0 border-r border-gray-50 last:border-r-0">
-                                            <textarea
-                                                value={agenda[key] || ''}
-                                                onChange={(e) => handleCellChange(dayIndex, hour, e.target.value)}
-                                                placeholder="..."
-                                                className="w-full h-20 p-2 text-xs text-gray-700 resize-none bg-transparent focus:bg-blue-50/30 focus:ring-1 focus:ring-blue-100 outline-none transition-all placeholder:text-gray-200"
-                                            />
-                                        </td>
-                                    );
-                                })}
+            <div className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
+                <div className="overflow-x-auto">
+                    <table className="min-w-[900px] w-full border-collapse">
+                        <thead>
+                            <tr className="bg-gradient-to-r from-gray-50 to-sky-50 border-b border-gray-100">
+                                <th className="w-24 border-r border-gray-100 px-4 py-4 text-center text-xs font-black uppercase tracking-wider text-gray-500">Saat</th>
+                                {DAYS.map((day) => (
+                                    <th key={day} className="px-4 py-4 text-center text-xs font-black uppercase tracking-wider text-gray-500">
+                                        {day}
+                                    </th>
+                                ))}
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-
-            <div className="flex justify-end pt-4">
-                <button
-                    onClick={() => saveAgenda(agenda)}
-                    disabled={saving}
-                    className={`px-8 py-3 rounded-xl font-bold text-white transition-all shadow-lg ${
-                        saving ? 'bg-gray-400 cursor-not-allowed' : 'bg-gray-900 hover:bg-black active:scale-95'
-                    }`}
-                >
-                    {saving ? 'Kaydediliyor...' : 'Tüm Planı Kaydet'}
-                </button>
+                        </thead>
+                        <tbody>
+                            {HOURS.map((hour) => (
+                                <tr key={hour} className="border-b border-gray-50 last:border-0">
+                                    <td className="border-r border-gray-100 bg-gray-50/70 px-2 py-3 text-center">
+                                        <span className="text-xs font-extrabold text-gray-700">
+                                            {hour.toString().padStart(2, '0')}:00
+                                        </span>
+                                    </td>
+                                    {DAYS.map((day, dayIndex) => {
+                                        const key = `${dayIndex}-${hour}`;
+                                        const hasValue = (agenda[key] || '').trim().length > 0;
+                                        return (
+                                            <td key={day} className="border-r border-gray-50 p-0 last:border-r-0">
+                                                <textarea
+                                                    value={agenda[key] || ''}
+                                                    onChange={(e) => handleCellChange(dayIndex, hour, e.target.value)}
+                                                    placeholder="Planını yaz"
+                                                    className={`h-20 w-full resize-none bg-transparent px-2 py-2 text-center text-xs font-medium text-gray-700 outline-none transition-all placeholder:text-gray-300 focus:bg-sky-50 ${
+                                                        hasValue ? 'bg-amber-50/50' : ''
+                                                    }`}
+                                                />
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );
