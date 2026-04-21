@@ -118,9 +118,11 @@ export default function Sidebar() {
                             </div>
                         ) : (
                             <>
-                                <h3 className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
-                                    {section.label}
-                                </h3>
+                                {section.label !== 'Genel' && (
+                                    <h3 className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                                        {section.label}
+                                    </h3>
+                                )}
                                 <ul className="space-y-1">
                                     {section.items.map((item) => {
                                         const isActive = pathname === item.href;
