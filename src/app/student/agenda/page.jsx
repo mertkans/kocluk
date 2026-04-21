@@ -108,33 +108,6 @@ export default function AgendaPage() {
                     <p className="max-w-2xl text-sm text-gray-600">
                         Haftalık çalışma planını gün gün düzenle. Her kutuya ders, konu veya tekrar notu yaz.
                     </p>
-
-                    <div className="grid w-full max-w-3xl grid-cols-1 gap-3 sm:grid-cols-3">
-                        <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 shadow-sm">
-                            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Toplam Dilim</p>
-                            <p className="mt-1 text-2xl font-black text-gray-900">{totalSlots}</p>
-                        </div>
-                        <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 shadow-sm">
-                            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Dolu Dilim</p>
-                            <p className="mt-1 text-2xl font-black text-sky-600">{filledSlots}</p>
-                        </div>
-                        <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 shadow-sm">
-                            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Tamamlanma</p>
-                            <p className="mt-1 text-2xl font-black text-emerald-600">%{completionRate}</p>
-                        </div>
-                    </div>
-
-                    <button
-                        onClick={() => saveAgenda(agenda)}
-                        disabled={saving}
-                        className={`mt-2 rounded-xl px-7 py-3 text-sm font-bold text-white transition-all ${
-                            saving
-                                ? 'cursor-not-allowed bg-gray-400'
-                                : 'bg-gradient-to-r from-sky-600 to-cyan-600 shadow-lg shadow-cyan-100 hover:scale-[1.01] hover:from-sky-700 hover:to-cyan-700'
-                        }`}
-                    >
-                        {saving ? 'Kaydediliyor...' : 'Planı Kaydet'}
-                    </button>
                 </div>
             </div>
 
@@ -192,6 +165,37 @@ export default function AgendaPage() {
                             ))}
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            <div className="rounded-3xl border border-sky-100 bg-gradient-to-br from-white via-sky-50 to-amber-50 p-5 sm:p-6">
+                <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 text-center shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Toplam Dilim</p>
+                        <p className="mt-1 text-2xl font-black text-gray-900">{totalSlots}</p>
+                    </div>
+                    <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 text-center shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Dolu Dilim</p>
+                        <p className="mt-1 text-2xl font-black text-sky-600">{filledSlots}</p>
+                    </div>
+                    <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 text-center shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Tamamlanma</p>
+                        <p className="mt-1 text-2xl font-black text-emerald-600">%{completionRate}</p>
+                    </div>
+                </div>
+
+                <div className="mt-5 flex justify-center">
+                    <button
+                        onClick={() => saveAgenda(agenda)}
+                        disabled={saving}
+                        className={`rounded-xl px-7 py-3 text-sm font-bold text-white transition-all ${
+                            saving
+                                ? 'cursor-not-allowed bg-gray-400'
+                                : 'bg-gradient-to-r from-sky-600 to-cyan-600 shadow-lg shadow-cyan-100 hover:scale-[1.01] hover:from-sky-700 hover:to-cyan-700'
+                        }`}
+                    >
+                        {saving ? 'Kaydediliyor...' : 'Planı Kaydet'}
+                    </button>
                 </div>
             </div>
         </div>
