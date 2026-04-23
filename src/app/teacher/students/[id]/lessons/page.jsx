@@ -37,8 +37,8 @@ export default function StudentLessonsPage() {
     const [lessonForm, setLessonForm] = useState({
         lesson_date: todayLocal(),
         unit: '1',
+        hourlyRate: '',
         subject: '',
-        price: '',
     });
     const [lessonSaving, setLessonSaving] = useState(false);
 
@@ -65,9 +65,9 @@ export default function StudentLessonsPage() {
             .single();
         setStudent(studentData);
 
-        // Varsayılan fiyatı ve birimi form'a uygula
+        // Varsayılan saatlik ücretı form'a uygula
         if (studentData?.default_lesson_price) {
-            setLessonForm(prev => ({ ...prev, price: String(studentData.default_lesson_price) }));
+            setLessonForm(prev => ({ ...prev, hourlyRate: String(studentData.default_lesson_price) }));
         }
 
         const { data: lessonsData } = await supabase
@@ -90,7 +90,10 @@ export default function StudentLessonsPage() {
     };
 
     const handleAddLesson = async () => {
-        if (!lessonForm.lesson_date || !lessonForm.price) return;
+        const unitVal = parseUnit(lessonForm.unit);
+        const rate = parseFloat(lessonForm.hourlyRate);
+        if (!lessonForm.lesson_date || !lessonForm.hourlyRate || isNaN(rate) || rate <= 0) return;
+        const computedPrice = Math.round(unitVal * rate);
         setLessonSaving(true);
         const { data, error } = await supabase
             .from('private_lessons')
@@ -100,7 +103,7 @@ export default function StudentLessonsPage() {
                 lesson_date: lessonForm.lesson_date,
                 duration_minutes: Math.round(parseUnit(lessonForm.unit) * 60),
                 subject: lessonForm.subject.trim() || null,
-                price: parseFloat(lessonForm.price),
+                price: computedPrice,
             }])
             .select()
             .single();
@@ -110,8 +113,8 @@ export default function StudentLessonsPage() {
             setLessonForm({
                 lesson_date: todayLocal(),
                 unit: '1',
+                hourlyRate: student?.default_lesson_price ? String(student.default_lesson_price) : '',
                 subject: '',
-                price: student?.default_lesson_price ? String(student.default_lesson_price) : '',
             });
             setShowLessonForm(false);
         } else if (error) {
@@ -272,11 +275,11 @@ export default function StudentLessonsPage() {
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-500 mb-1">Ücret (₺)</label>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">Saat Ücreti (₺)</label>
                             <input
                                 type="number" min="0" step="1"
-                                value={lessonForm.price}
-                                onChange={e => setLessonForm({ ...lessonForm, price: e.target.value })}
+                                value={lessonForm.hourlyRate}
+                                onChange={e => setLessonForm({ ...lessonForm, hourlyRate: e.target.value })}
                                 placeholder="0"
                                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm"
                             />
@@ -291,25 +294,26 @@ export default function StudentLessonsPage() {
                                     type="text"
                                     inputMode="decimal"
                                     value={lessonForm.unit}
-                                    onChange={e => {
-                                        const raw = e.target.value;
-                                        const unitVal = parseUnit(raw);
-                                        const basePrice = student?.default_lesson_price;
-                                        const newPrice = basePrice && !isNaN(unitVal) && unitVal > 0
-                                            ? String(Math.round(unitVal * basePrice))
-                                            : lessonForm.price;
-                                        setLessonForm({ ...lessonForm, unit: raw, price: newPrice });
-                                    }}
+                                    onChange={e => setLessonForm({ ...lessonForm, unit: e.target.value })}
                                     placeholder="1"
                                     className="w-28 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm text-center font-semibold"
                                 />
-                                {student?.default_lesson_price && (
-                                    <span className="text-xs text-gray-400">
-                                        {parseUnit(lessonForm.unit) > 0
-                                            ? `${parseUnit(lessonForm.unit)} × ${Number(student.default_lesson_price).toLocaleString('tr-TR')}₺ = ${Math.round(parseUnit(lessonForm.unit) * student.default_lesson_price).toLocaleString('tr-TR')}₺`
-                                            : 'Geçerli bir birim girin'}
-                                    </span>
-                                )}
+                                {/* Hesaplanan fiyat gösterimi */}
+                                {(() => {
+                                    const u = parseUnit(lessonForm.unit);
+                                    const r = parseFloat(lessonForm.hourlyRate);
+                                    if (u > 0 && r > 0) {
+                                        return (
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-xs text-gray-400">{u} × {r.toLocaleString('tr-TR')}₺ =</span>
+                                                <span className="text-sm font-bold text-gray-800 bg-gray-100 px-3 py-1 rounded-lg">
+                                                    {Math.round(u * r).toLocaleString('tr-TR')}₺
+                                                </span>
+                                            </div>
+                                        );
+                                    }
+                                    return <span className="text-xs text-gray-400">Saat ücreti ve birim girin</span>;
+                                })()}
                             </div>
                         </div>
                         <div className="sm:col-span-2">
@@ -332,7 +336,7 @@ export default function StudentLessonsPage() {
                         </button>
                         <button
                             onClick={handleAddLesson}
-                            disabled={lessonSaving || !lessonForm.lesson_date || !lessonForm.price}
+                            disabled={lessonSaving || !lessonForm.lesson_date || !lessonForm.hourlyRate || parseFloat(lessonForm.hourlyRate) <= 0}
                             className="px-6 py-2 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 active:scale-[0.97] transition-all disabled:opacity-40 shadow-sm"
                         >
                             {lessonSaving ? 'Kaydediliyor...' : '📚 Dersi Kaydet'}
