@@ -126,7 +126,9 @@ export default function Sidebar() {
                                 )}
                                 <ul className="space-y-1">
                                     {section.items.map((item) => {
-                                        const isActive = pathname === item.href;
+                                        const isActive = item.href === '/teacher' || item.href === '/student' || item.href === '/admin'
+                                            ? pathname === item.href
+                                            : pathname.startsWith(item.href);
                                         return (
                                             <li key={item.href}>
                                                 <Link
