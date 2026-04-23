@@ -11,7 +11,7 @@ export default function TeacherStudentsPage() {
     const [classes, setClasses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
-    const [formData, setFormData] = useState({ name: '', email: '', phone: '', classId: '' });
+    const [formData, setFormData] = useState({ name: '', email: '', phone: '', classId: '', defaultLessonPrice: '' });
     const [formLoading, setFormLoading] = useState(false);
     const [formError, setFormError] = useState('');
     const [createdStudent, setCreatedStudent] = useState(null);
@@ -80,7 +80,7 @@ export default function TeacherStudentsPage() {
 
             if (data.success) {
                 setCreatedStudent(data.student);
-                setFormData({ name: '', email: '', phone: '', classId: '' });
+                setFormData({ name: '', email: '', phone: '', classId: '', defaultLessonPrice: '' });
                 fetchStudents();
             } else {
                 setFormError(data.error);
@@ -193,6 +193,14 @@ export default function TeacherStudentsPage() {
                                     ))}
                                 </select>
                             )}
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-600 mb-1">Varsayılan Ders Ücreti (₺)</label>
+                            <input type="number" min="0" step="1" value={formData.defaultLessonPrice}
+                                onChange={(e) => setFormData({ ...formData, defaultLessonPrice: e.target.value })}
+                                placeholder="Örn: 500"
+                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm"
+                            />
                         </div>
                         <div className="sm:col-span-2">
                             <button type="submit" disabled={formLoading || classes.length === 0}

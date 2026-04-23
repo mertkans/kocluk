@@ -13,7 +13,7 @@ export async function PUT(request, { params }) {
         }
 
         const body = await request.json();
-        const { name, phone, classId, email } = body;
+        const { name, phone, classId, email, defaultLessonPrice } = body;
 
         if (!name?.trim()) {
             return NextResponse.json({ error: 'Ad Soyad zorunludur.' }, { status: 400 });
@@ -23,6 +23,9 @@ export async function PUT(request, { params }) {
         const updateData = {
             name: name.trim(),
             phone: phone?.trim() || null,
+            default_lesson_price: defaultLessonPrice !== undefined
+                ? (defaultLessonPrice === '' || defaultLessonPrice === null ? null : parseFloat(defaultLessonPrice))
+                : undefined,
         };
 
         // class_id varsa ekle (classes tablosu yoksa hata vermemesi için)

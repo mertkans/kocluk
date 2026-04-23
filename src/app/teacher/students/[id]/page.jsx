@@ -77,7 +77,7 @@ export default function StudentDetailPage() {
     const [passwordLoading, setPasswordLoading] = useState(false);
 
     const [editing, setEditing] = useState(false);
-    const [editData, setEditData] = useState({ name: '', email: '', phone: '', classId: '' });
+    const [editData, setEditData] = useState({ name: '', email: '', phone: '', classId: '', defaultLessonPrice: '' });
     const [editLoading, setEditLoading] = useState(false);
     const [editError, setEditError] = useState('');
     const [classes, setClasses] = useState([]);
@@ -161,6 +161,7 @@ export default function StudentDetailPage() {
             email: student.email || '',
             phone: student.phone || '',
             classId: student.class_id || '',
+            defaultLessonPrice: student.default_lesson_price ?? '',
         });
         setEditError('');
         setEditing(true);
@@ -340,6 +341,15 @@ export default function StudentDetailPage() {
                         )}
                     </div>
                 </div>
+                <Link
+                    href={`/teacher/students/${id}/lessons`}
+                    className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-50 text-emerald-700 text-sm font-semibold rounded-xl hover:bg-emerald-100 transition-all border border-emerald-200"
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Ödeme Takibi
+                </Link>
             </div>
 
             {/* Düzenleme Formu */}
@@ -393,6 +403,16 @@ export default function StudentDetailPage() {
                                     ))}
                                 </select>
                             )}
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-600 mb-1">Varsayılan Ders Ücreti (₺)</label>
+                            <input
+                                type="number" min="0" step="1"
+                                value={editData.defaultLessonPrice}
+                                onChange={(e) => setEditData({ ...editData, defaultLessonPrice: e.target.value })}
+                                placeholder="Örn: 500"
+                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm"
+                            />
                         </div>
                         <div className="sm:col-span-2">
                             <button type="submit" disabled={editLoading}
