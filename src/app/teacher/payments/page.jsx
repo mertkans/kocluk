@@ -64,7 +64,7 @@ export default function PaymentsOverviewPage() {
                 totalPaid,
                 balance,
             };
-        }).filter(s => s.lessonCount > 0 || s.totalPaid > 0); // hiç kaydı olmayanları gizle
+        }).sort((a, b) => a.name.localeCompare(b.name, 'tr'));
 
         setRows(computed);
         setLoading(false);
@@ -129,7 +129,7 @@ export default function PaymentsOverviewPage() {
                     <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1">Öğrenciler</h2>
 
                     {/* Borçlular önce, sonra alacaklılar/eşitler */}
-                    {[...rows].sort((a, b) => a.balance - b.balance).map(student => {
+                    {rows.map(student => {
                         const hasDebt = student.balance < 0;
                         const hasCredit = student.balance > 0;
                         return (
