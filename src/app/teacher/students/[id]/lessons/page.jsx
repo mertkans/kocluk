@@ -6,7 +6,11 @@ import { useAuth } from '@/context/AuthProvider';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 
-const DURATION_OPTIONS = [30, 45, 60, 90, 120];
+// Virgül veya nokta ile girilen ondalıkları sayıya çevir
+function parseUnit(str) {
+    if (!str) return 1;
+    return parseFloat(String(str).replace(',', '.')) || 1;
+}
 
 function formatDate(dateStr) {
     if (!dateStr) return '';
@@ -32,7 +36,7 @@ export default function StudentLessonsPage() {
     const [showLessonForm, setShowLessonForm] = useState(false);
     const [lessonForm, setLessonForm] = useState({
         lesson_date: todayLocal(),
-        duration_minutes: 60,
+        unit: '1',
         subject: '',
         price: '',
     });
@@ -61,7 +65,7 @@ export default function StudentLessonsPage() {
             .single();
         setStudent(studentData);
 
-        // Varsayılan fiyatı form'a uygula
+        // Varsayılan fiyatı ve birimi form'a uygula
         if (studentData?.default_lesson_price) {
             setLessonForm(prev => ({ ...prev, price: String(studentData.default_lesson_price) }));
         }
@@ -94,7 +98,7 @@ export default function StudentLessonsPage() {
                 teacher_id: profile.id,
                 student_id: id,
                 lesson_date: lessonForm.lesson_date,
-                duration_minutes: lessonForm.duration_minutes,
+                duration_minutes: Math.round(parseUnit(lessonForm.unit) * 60),
                 subject: lessonForm.subject.trim() || null,
                 price: parseFloat(lessonForm.price),
             }])
@@ -105,7 +109,7 @@ export default function StudentLessonsPage() {
             setLessons(prev => [data, ...prev].sort((a, b) => b.lesson_date.localeCompare(a.lesson_date)));
             setLessonForm({
                 lesson_date: todayLocal(),
-                duration_minutes: 60,
+                unit: '1',
                 subject: '',
                 price: student?.default_lesson_price ? String(student.default_lesson_price) : '',
             });
@@ -278,22 +282,34 @@ export default function StudentLessonsPage() {
                             />
                         </div>
                         <div className="sm:col-span-2">
-                            <label className="block text-xs font-medium text-gray-500 mb-2">Süre</label>
-                            <div className="flex gap-2 flex-wrap">
-                                {DURATION_OPTIONS.map(d => (
-                                    <button
-                                        key={d}
-                                        type="button"
-                                        onClick={() => setLessonForm({ ...lessonForm, duration_minutes: d })}
-                                        className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all ${
-                                            lessonForm.duration_minutes === d
-                                                ? 'bg-gray-900 text-white border-gray-900'
-                                                : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300'
-                                        }`}
-                                    >
-                                        {d} dk
-                                    </button>
-                                ))}
+                            <label className="block text-xs font-medium text-gray-500 mb-1">
+                                Birim
+                                <span className="ml-1 text-gray-400 font-normal">(1 = 1 saat, 1,5 = 1.5 saat...)</span>
+                            </label>
+                            <div className="flex items-center gap-3">
+                                <input
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={lessonForm.unit}
+                                    onChange={e => {
+                                        const raw = e.target.value;
+                                        const unitVal = parseUnit(raw);
+                                        const basePrice = student?.default_lesson_price;
+                                        const newPrice = basePrice && !isNaN(unitVal) && unitVal > 0
+                                            ? String(Math.round(unitVal * basePrice))
+                                            : lessonForm.price;
+                                        setLessonForm({ ...lessonForm, unit: raw, price: newPrice });
+                                    }}
+                                    placeholder="1"
+                                    className="w-28 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm text-center font-semibold"
+                                />
+                                {student?.default_lesson_price && (
+                                    <span className="text-xs text-gray-400">
+                                        {parseUnit(lessonForm.unit) > 0
+                                            ? `${parseUnit(lessonForm.unit)} × ${Number(student.default_lesson_price).toLocaleString('tr-TR')}₺ = ${Math.round(parseUnit(lessonForm.unit) * student.default_lesson_price).toLocaleString('tr-TR')}₺`
+                                            : 'Geçerli bir birim girin'}
+                                    </span>
+                                )}
                             </div>
                         </div>
                         <div className="sm:col-span-2">
