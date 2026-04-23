@@ -17,6 +17,7 @@ const menuSections = {
             { href: '/teacher', label: 'Ana Sayfa', icon: '📊' },
             { href: '/teacher/students', label: 'Öğrencilerim', icon: '👨‍🎓' },
             { href: '/teacher/assignments', label: 'Ödevler', icon: '📋' },
+            { href: '/teacher/payments', label: 'Ödeme Takibi', icon: '💰' },
         ]},
         { 
             label: 'Tanımlamalar', 
