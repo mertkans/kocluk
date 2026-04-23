@@ -82,6 +82,11 @@ export default function StudentDetailPage() {
     const [editError, setEditError] = useState('');
     const [classes, setClasses] = useState([]);
 
+    // Notlar
+    const [notes, setNotes] = useState([]);
+    const [noteContent, setNoteContent] = useState('');
+    const [noteSaving, setNoteSaving] = useState(false);
+
     useEffect(() => {
         if (profile && id) fetchData();
     }, [profile, id]);
@@ -115,6 +120,15 @@ export default function StudentDetailPage() {
             .eq('teacher_id', profile.id)
             .order('name');
         if (!classError) setClasses(classData || []);
+
+        // Öğrenci notlarını çek
+        const { data: notesData } = await supabase
+            .from('student_notes')
+            .select('*')
+            .eq('student_id', id)
+            .eq('teacher_id', profile.id)
+            .order('created_at', { ascending: false });
+        setNotes(notesData || []);
 
         setLoading(false);
     };
@@ -573,6 +587,104 @@ export default function StudentDetailPage() {
                     </div>
                 </div>
             )}
+
+            {/* Not Ekle & Not Listesi */}
+            <div className="space-y-4">
+                {/* Başlık + Not Ekle Formu */}
+                <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm space-y-4">
+                    <div className="flex items-center gap-2">
+                        <span className="text-base">📝</span>
+                        <h2 className="text-sm font-bold text-gray-700">Öğrenci Notları</h2>
+                        {notes.length > 0 && (
+                            <span className="ml-auto px-2 py-0.5 bg-gray-100 text-gray-500 text-xs font-semibold rounded-full">
+                                {notes.length} not
+                            </span>
+                        )}
+                    </div>
+
+                    <div className="space-y-2">
+                        <textarea
+                            value={noteContent}
+                            onChange={(e) => setNoteContent(e.target.value)}
+                            placeholder="Bu öğrenci hakkında not ekleyin..."
+                            rows={3}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm resize-none text-gray-800 placeholder-gray-400"
+                        />
+                        <div className="flex justify-end">
+                            <button
+                                onClick={async () => {
+                                    const trimmed = noteContent.trim();
+                                    if (!trimmed) return;
+                                    setNoteSaving(true);
+                                    const { data, error } = await supabase
+                                        .from('student_notes')
+                                        .insert([{ teacher_id: profile.id, student_id: id, content: trimmed }])
+                                        .select()
+                                        .single();
+                                    if (!error && data) {
+                                        setNotes(prev => [data, ...prev]);
+                                        setNoteContent('');
+                                    } else if (error) {
+                                        alert('Not eklenemedi: ' + error.message);
+                                    }
+                                    setNoteSaving(false);
+                                }}
+                                disabled={noteSaving || !noteContent.trim()}
+                                className="px-5 py-2 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+                            >
+                                {noteSaving ? 'Kaydediliyor...' : '+ Not Ekle'}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Not Listesi */}
+                    {notes.length > 0 ? (
+                        <div className="space-y-2 pt-2 border-t border-gray-100">
+                            {notes.map((note) => (
+                                <div
+                                    key={note.id}
+                                    className="group flex items-start gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100/70 transition-all"
+                                >
+                                    <div className="shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center shadow-sm mt-0.5">
+                                        <span className="text-white text-xs font-bold">N</span>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{note.content}</p>
+                                        <p className="text-xs text-gray-400 mt-1">
+                                            {new Date(note.created_at).toLocaleDateString('tr-TR', {
+                                                day: 'numeric', month: 'long', year: 'numeric',
+                                                hour: '2-digit', minute: '2-digit'
+                                            })}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={async () => {
+                                            if (!confirm('Bu notu silmek istediğinizden emin misiniz?')) return;
+                                            const { error } = await supabase
+                                                .from('student_notes')
+                                                .delete()
+                                                .eq('id', note.id);
+                                            if (!error) {
+                                                setNotes(prev => prev.filter(n => n.id !== note.id));
+                                            }
+                                        }}
+                                        className="shrink-0 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                                        title="Notu sil"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-xs text-gray-400 text-center py-2">
+                            Bu öğrenci için henüz not eklenmemiş.
+                        </p>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }
