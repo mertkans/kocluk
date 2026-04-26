@@ -15,6 +15,7 @@ const menuSections = {
     teacher: [
         { label: 'Genel', items: [
             { href: '/teacher', label: 'Ana Sayfa', icon: '📊' },
+            { href: '/teacher/agenda', label: 'Ajanda', icon: '📅' },
             { href: '/teacher/students', label: 'Öğrencilerim', icon: '👨‍🎓' },
             { href: '/teacher/assignments', label: 'Ödevler', icon: '📋' },
             { href: '/teacher/payments', label: 'Ödeme Takibi', icon: '💰' },
