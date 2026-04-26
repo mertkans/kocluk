@@ -95,6 +95,45 @@ export default function AgendaPage() {
 
   // ---- CRUD ----
   const handleSave = async (form, applyToFuture) => {
+    const timeToMin = (t) => {
+      const [h, m] = t.split(':').map(Number);
+      return h * 60 + m;
+    };
+
+    const newStart = timeToMin(form.start_time);
+    const newEnd = newStart + form.duration_minutes;
+
+    // Çakışma kontrolü için tarihleri belirle
+    const weeksCount = !editLesson && form.is_recurring ? 12 : 1;
+    const targetDates = [];
+    for (let w = 0; w < weeksCount; w++) {
+      const d = new Date(form.lesson_date + 'T12:00:00');
+      d.setDate(d.getDate() + w * 7);
+      targetDates.push(fmtDate(d));
+    }
+
+    // Bu tarihlerdeki mevcut dersleri çek (iptal edilmemiş olanlar)
+    const { data: existing } = await supabase
+      .from('scheduled_lessons')
+      .select('id, lesson_date, start_time, duration_minutes, student:users(name)')
+      .eq('teacher_id', profile.id)
+      .in('lesson_date', targetDates)
+      .neq('status', 'cancelled');
+
+    // Çakışma var mı bak
+    for (const date of targetDates) {
+      const sameDayLessons = existing?.filter(l => l.lesson_date === date && l.id !== editLesson?.id) || [];
+      for (const ex of sameDayLessons) {
+        const exStart = timeToMin(ex.start_time);
+        const exEnd = exStart + ex.duration_minutes;
+
+        if (newStart < exEnd && exStart < newEnd) {
+          alert(`⚠️ Çakışma Tespit Edildi!\n\n${date} tarihinde saat ${ex.start_time.slice(0, 5)}'deki "${ex.student?.name}" dersi ile bu ders çakışıyor.\n\nLütfen saati veya süreyi değiştirin.`);
+          return;
+        }
+      }
+    }
+
     if (editLesson) {
       // UPDATE
       const updates = {
@@ -120,15 +159,12 @@ export default function AgendaPage() {
       // INSERT
       const groupId = form.is_recurring ? crypto.randomUUID() : null;
       const rows = [];
-      const weeksCount = form.is_recurring ? 12 : 1;
-
+      
       for (let w = 0; w < weeksCount; w++) {
-        const d = new Date(form.lesson_date + 'T12:00:00');
-        d.setDate(d.getDate() + w * 7);
         rows.push({
           teacher_id: profile.id,
           student_id: form.student_id,
-          lesson_date: fmtDate(d),
+          lesson_date: targetDates[w],
           start_time: form.start_time,
           duration_minutes: form.duration_minutes,
           lesson_type: form.lesson_type,
