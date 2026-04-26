@@ -113,12 +113,18 @@ export default function AgendaPage() {
     }
 
     // Bu tarihlerdeki mevcut dersleri çek (iptal edilmemiş olanlar)
-    const { data: existing } = await supabase
+    const { data: existing, error: checkError } = await supabase
       .from('scheduled_lessons')
-      .select('id, lesson_date, start_time, duration_minutes, student:users(name)')
+      .select('id, lesson_date, start_time, duration_minutes, student:users!scheduled_lessons_student_id_fkey(name)')
       .eq('teacher_id', profile.id)
       .in('lesson_date', targetDates)
       .neq('status', 'cancelled');
+
+    if (checkError) {
+      console.error('Overlap check error:', checkError);
+      alert('Çakışma kontrolü sırasında bir hata oluştu: ' + checkError.message);
+      return;
+    }
 
     // Çakışma var mı bak
     for (const date of targetDates) {
