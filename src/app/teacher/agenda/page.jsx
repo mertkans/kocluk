@@ -350,7 +350,7 @@ function LessonCard({ lesson, compact, onEdit, onStatus, onDelete }) {
     : 'bg-blue-50/60 border-blue-200 hover:border-blue-300';
 
   return (
-    <div className={`group rounded-xl border p-2.5 transition-all ${bgClass} ${compact ? 'text-[10px]' : 'text-xs'}`}>
+    <div className={`group rounded-xl border p-2.5 transition-all ${bgClass} ${compact ? 'text-xs' : 'text-sm'}`}>
       {/* Top row */}
       <div className="flex items-start justify-between gap-1">
         <div className="min-w-0 flex-1">
@@ -372,7 +372,7 @@ function LessonCard({ lesson, compact, onEdit, onStatus, onDelete }) {
 
         {/* Status badge */}
         {(isCompleted || isCancelled) && (
-          <span className={`shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+          <span className={`shrink-0 text-[11px] font-bold px-1.5 py-0.5 rounded-full ${
             isCompleted ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-500'
           }`}>
             {isCompleted ? '✓' : '✕'}
@@ -385,28 +385,28 @@ function LessonCard({ lesson, compact, onEdit, onStatus, onDelete }) {
         <div className={`flex gap-1 mt-1.5 ${compact ? 'opacity-0 group-hover:opacity-100' : ''} transition-opacity`}>
           <button
             onClick={(e) => { e.stopPropagation(); onStatus(lesson, 'completed'); }}
-            className="flex-1 py-1 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 font-bold transition-all text-[10px]"
+            className="flex-1 py-1 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 font-bold transition-all text-xs"
             title="Onayla"
           >
             ✓
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onStatus(lesson, 'cancelled'); }}
-            className="flex-1 py-1 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 font-bold transition-all text-[10px]"
+            className="flex-1 py-1 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 font-bold transition-all text-xs"
             title="İptal"
           >
             ✕
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onEdit(); }}
-            className="flex-1 py-1 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 font-bold transition-all text-[10px]"
+            className="flex-1 py-1 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 font-bold transition-all text-xs"
             title="Düzenle"
           >
             ✏️
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(lesson); }}
-            className="py-1 px-1.5 rounded-lg bg-gray-100 text-gray-400 hover:bg-red-100 hover:text-red-500 font-bold transition-all text-[10px]"
+            className="py-1 px-1.5 rounded-lg bg-gray-100 text-gray-400 hover:bg-red-100 hover:text-red-500 font-bold transition-all text-xs"
             title="Sil"
           >
             🗑
