@@ -67,13 +67,28 @@ export default function AgendaModal({ show, onClose, onSave, students, editLesso
     }
   }, [editLesson, show]);
 
+  const [autoFilled, setAutoFilled] = useState(false);
+
+  useEffect(() => {
+    if (editLesson, show) {
+      setAutoFilled(false);
+    }
+  }, [editLesson, show]);
+
   // Auto-fill price when student changes
   useEffect(() => {
     if (!isEdit && form.student_id) {
       const s = students.find(st => st.id === form.student_id);
       if (s?.default_lesson_price) {
         setForm(prev => ({ ...prev, price: String(s.default_lesson_price) }));
+        setAutoFilled(true);
+      } else {
+        // Öğrencinin varsayılan fiyatı yoksa alanı temizle
+        setForm(prev => ({ ...prev, price: '' }));
+        setAutoFilled(false);
       }
+    } else if (!isEdit && !form.student_id) {
+      setAutoFilled(false);
     }
   }, [form.student_id, isEdit, students]);
 
@@ -195,10 +210,22 @@ export default function AgendaModal({ show, onClose, onSave, students, editLesso
               <input
                 type="number" min="0" step="1"
                 value={form.price}
-                onChange={e => setForm({ ...form, price: e.target.value })}
+                onChange={e => {
+                  setForm({ ...form, price: e.target.value });
+                  setAutoFilled(false);
+                }}
                 placeholder="0"
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm"
+                className={`w-full px-4 py-2.5 rounded-xl border focus:ring-2 outline-none transition-all text-sm ${
+                  autoFilled
+                    ? 'border-emerald-300 focus:border-emerald-400 focus:ring-emerald-100 bg-emerald-50/40'
+                    : 'border-gray-200 focus:border-blue-400 focus:ring-blue-100'
+                }`}
               />
+              {autoFilled && (
+                <p className="text-[11px] text-emerald-600 mt-1 flex items-center gap-1">
+                  ✓ Öğrenci profilinden otomatik getirildi — değiştirebilirsiniz
+                </p>
+              )}
             </div>
           </div>
 
