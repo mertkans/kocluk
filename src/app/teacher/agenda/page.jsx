@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/context/AuthProvider';
 import { supabase } from '@/lib/supabaseClient';
 import AgendaModal from '@/components/AgendaModal';
+import HolidayModal from '@/components/HolidayModal';
 
 function getWeekDays(baseDate) {
   const days = [];
@@ -45,6 +46,7 @@ export default function AgendaPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editLesson, setEditLesson] = useState(null);
+  const [showHolidayModal, setShowHolidayModal] = useState(false);
 
   const days = getWeekDays(weekStart);
 
@@ -112,10 +114,10 @@ export default function AgendaPage() {
       targetDates.push(fmtDate(d));
     }
 
-    // Bu tarihlerdeki mevcut dersleri çek (iptal edilmemiş olanlar)
+    // Bu tarihlerdeki mevcut kayıtları çek (iptal edilmemiş dersler + tatiller)
     const { data: existing, error: checkError } = await supabase
       .from('scheduled_lessons')
-      .select('id, lesson_date, start_time, duration_minutes, student:users!scheduled_lessons_student_id_fkey(name)')
+      .select('id, lesson_date, start_time, duration_minutes, lesson_type, label, student:users!scheduled_lessons_student_id_fkey(name)')
       .eq('teacher_id', profile.id)
       .in('lesson_date', targetDates)
       .neq('status', 'cancelled');
@@ -128,13 +130,16 @@ export default function AgendaPage() {
 
     // Çakışma var mı bak
     for (const date of targetDates) {
-      const sameDayLessons = existing?.filter(l => l.lesson_date === date && l.id !== editLesson?.id) || [];
-      for (const ex of sameDayLessons) {
+      const sameDayItems = existing?.filter(l => l.lesson_date === date && l.id !== editLesson?.id) || [];
+      for (const ex of sameDayItems) {
         const exStart = timeToMin(ex.start_time);
         const exEnd = exStart + ex.duration_minutes;
 
         if (newStart < exEnd && exStart < newEnd) {
-          alert(`⚠️ Çakışma Tespit Edildi!\n\n${date} tarihinde saat ${ex.start_time.slice(0, 5)}'deki "${ex.student?.name}" dersi ile bu ders çakışıyor.\n\nLütfen saati veya süreyi değiştirin.`);
+          const isHoliday = ex.lesson_type === 'holiday';
+          const name = isHoliday ? (ex.label || 'Tatil') : (ex.student?.name || 'başka bir ders');
+          const icon = isHoliday ? '🚫' : '⚠️';
+          alert(`${icon} Çakışma Tespit Edildi!\n\n${date} tarihinde saat ${ex.start_time.slice(0, 5)}'de "${name}" bloğu ile çakışıyor.\n\nLütfen saati veya süreyi değiştirin.`);
           return;
         }
       }
@@ -206,8 +211,62 @@ export default function AgendaPage() {
   };
 
   const handleDelete = async (lesson) => {
-    if (!confirm('Bu dersi silmek istediğinizden emin misiniz?')) return;
+    if (!confirm('Bu kaydı silmek istediğinizden emin misiniz?')) return;
     await supabase.from('scheduled_lessons').delete().eq('id', lesson.id);
+    await fetchLessons();
+  };
+
+  const handleSaveHoliday = async (form) => {
+    const timeToMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+    const newStart = timeToMin(form.start_time);
+    const newEnd = newStart + form.duration_minutes;
+    const weeksCount = form.is_recurring ? 12 : 1;
+    const targetDates = [];
+    for (let w = 0; w < weeksCount; w++) {
+      const d = new Date(form.lesson_date + 'T12:00:00');
+      d.setDate(d.getDate() + w * 7);
+      targetDates.push(fmtDate(d));
+    }
+
+    // Tatil saatlerindeki ders çakışmalarını kontrol et ve uyar (ama engelleme)
+    const { data: existing } = await supabase
+      .from('scheduled_lessons')
+      .select('id, lesson_date, start_time, duration_minutes, lesson_type, student:users!scheduled_lessons_student_id_fkey(name)')
+      .eq('teacher_id', profile.id)
+      .in('lesson_date', targetDates)
+      .neq('status', 'cancelled')
+      .neq('lesson_type', 'holiday');
+
+    for (const date of targetDates) {
+      const sameDayLessons = existing?.filter(l => l.lesson_date === date) || [];
+      for (const ex of sameDayLessons) {
+        const exStart = timeToMin(ex.start_time);
+        const exEnd = exStart + ex.duration_minutes;
+        if (newStart < exEnd && exStart < newEnd) {
+          const ok = confirm(`⚠️ Dikkat: ${date} tarihinde saat ${ex.start_time.slice(0,5)}'de "${ex.student?.name}" dersi var ve tatil bloğuyla çakışıyor.\n\nYine de tatil eklensin mi?`);
+          if (!ok) return;
+          break;
+        }
+      }
+    }
+
+    const groupId = form.is_recurring ? crypto.randomUUID() : null;
+    const rows = targetDates.map(date => ({
+      teacher_id: profile.id,
+      student_id: null,
+      lesson_date: date,
+      start_time: form.start_time,
+      duration_minutes: form.duration_minutes,
+      lesson_type: 'holiday',
+      label: form.label,
+      subject: null,
+      price: 0,
+      is_recurring: form.is_recurring,
+      recurring_group_id: groupId,
+      status: 'scheduled',
+    }));
+    await supabase.from('scheduled_lessons').insert(rows);
+    setShowHolidayModal(false);
     await fetchLessons();
   };
 
@@ -236,12 +295,20 @@ export default function AgendaPage() {
           <h1 className="text-2xl font-bold text-gray-900">📅 Ajanda</h1>
           <p className="text-sm text-gray-400 mt-0.5">Haftalık ders programı</p>
         </div>
-        <button
-          onClick={openNew}
-          className="px-5 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 active:scale-[0.97] transition-all shadow-sm"
-        >
-          + Ders Ekle
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowHolidayModal(true)}
+            className="px-4 py-2.5 bg-amber-50 text-amber-700 border border-amber-200 text-sm font-semibold rounded-xl hover:bg-amber-100 active:scale-[0.97] transition-all"
+          >
+            🚫 Tatil Ekle
+          </button>
+          <button
+            onClick={openNew}
+            className="px-5 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 active:scale-[0.97] transition-all shadow-sm"
+          >
+            + Ders Ekle
+          </button>
+        </div>
       </div>
 
       {/* Week Navigation */}
@@ -301,7 +368,9 @@ export default function AgendaPage() {
                   {/* Lessons */}
                   <div className="space-y-1.5">
                     {dayLessons.map(lesson => (
-                      <LessonCard key={lesson.id} lesson={lesson} compact onEdit={() => openEdit(lesson)} onStatus={handleStatus} onDelete={handleDelete} />
+                      lesson.lesson_type === 'holiday'
+                        ? <HolidayCard key={lesson.id} lesson={lesson} compact onDelete={handleDelete} />
+                        : <LessonCard key={lesson.id} lesson={lesson} compact onEdit={() => openEdit(lesson)} onStatus={handleStatus} onDelete={handleDelete} />
                     ))}
                   </div>
 
@@ -344,7 +413,9 @@ export default function AgendaPage() {
                   ) : (
                     <div className="space-y-2">
                       {dayLessons.map(lesson => (
-                        <LessonCard key={lesson.id} lesson={lesson} onEdit={() => openEdit(lesson)} onStatus={handleStatus} onDelete={handleDelete} />
+                        lesson.lesson_type === 'holiday'
+                          ? <HolidayCard key={lesson.id} lesson={lesson} onDelete={handleDelete} />
+                          : <LessonCard key={lesson.id} lesson={lesson} onEdit={() => openEdit(lesson)} onStatus={handleStatus} onDelete={handleDelete} />
                       ))}
                     </div>
                   )}
@@ -355,13 +426,20 @@ export default function AgendaPage() {
         </>
       )}
 
-      {/* Modal */}
+      {/* Ders Modal */}
       <AgendaModal
         show={showModal}
         onClose={() => { setShowModal(false); setEditLesson(null); }}
         onSave={handleSave}
         students={students}
         editLesson={editLesson}
+      />
+
+      {/* Tatil Modal */}
+      <HolidayModal
+        show={showHolidayModal}
+        onClose={() => setShowHolidayModal(false)}
+        onSave={handleSaveHoliday}
       />
 
       {/* Modal animation style */}
@@ -371,6 +449,35 @@ export default function AgendaPage() {
           to { opacity: 1; transform: scale(1) translateY(0); }
         }
       `}</style>
+    </div>
+  );
+}
+
+// ---- Holiday Card Component ----
+function HolidayCard({ lesson, compact, onDelete }) {
+  const startTime = lesson.start_time?.slice(0, 5);
+  const endMin = (parseInt(startTime) * 60 + parseInt(startTime.split(':')[1])) + lesson.duration_minutes;
+  const endH = String(Math.floor(endMin / 60)).padStart(2, '0');
+  const endM = String(endMin % 60).padStart(2, '0');
+  const isAllDay = lesson.duration_minutes >= 900; // 15 saat+ = tüm gün
+
+  return (
+    <div className={`group rounded-xl border border-amber-200 bg-amber-50/80 p-2.5 transition-all ${compact ? 'text-xs' : 'text-sm'}`}>
+      <div className="flex items-start justify-between gap-1">
+        <div className="min-w-0 flex-1">
+          <div className="font-bold text-amber-700 truncate">🚫 {lesson.label || 'Tatil'}</div>
+          <div className="text-amber-500 mt-0.5">
+            {isAllDay ? 'Tüm Gün' : `${startTime} – ${endH}:${endM}`}
+          </div>
+        </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(lesson); }}
+          className={`shrink-0 py-1 px-1.5 rounded-lg bg-amber-100 text-amber-400 hover:bg-red-100 hover:text-red-500 font-bold transition-all text-xs ${compact ? 'opacity-0 group-hover:opacity-100' : ''}`}
+          title="Sil"
+        >
+          🗑
+        </button>
+      </div>
     </div>
   );
 }
