@@ -350,7 +350,7 @@ export default function AgendaPage() {
               return (
                 <div
                   key={dateStr}
-                  className={`rounded-2xl border p-3 min-h-[200px] transition-all ${
+                  className={`rounded-2xl border p-3 min-h-[200px] flex flex-col transition-all ${
                     today
                       ? 'border-blue-300 bg-blue-50/50 shadow-md ring-2 ring-blue-200'
                       : past
@@ -369,10 +369,10 @@ export default function AgendaPage() {
                   </div>
 
                   {/* Lessons */}
-                  <div className="space-y-1.5">
+                  <div className="flex-1 flex flex-col gap-1.5">
                     {dayLessons.map(lesson => (
                       lesson.lesson_type === 'holiday'
-                        ? <HolidayCard key={lesson.id} lesson={lesson} compact onDelete={handleDelete} />
+                        ? <HolidayCard key={lesson.id} lesson={lesson} compact stretch={lesson.duration_minutes >= 900 && dayLessons.length === 1} onDelete={handleDelete} />
                         : <LessonCard key={lesson.id} lesson={lesson} compact onEdit={() => openEdit(lesson)} onStatus={handleStatus} onDelete={handleDelete} />
                     ))}
                   </div>
@@ -457,16 +457,16 @@ export default function AgendaPage() {
 }
 
 // ---- Holiday Card Component ----
-function HolidayCard({ lesson, compact, onDelete }) {
+function HolidayCard({ lesson, compact, stretch, onDelete }) {
   const startTime = lesson.start_time?.slice(0, 5);
   const endMin = (parseInt(startTime) * 60 + parseInt(startTime.split(':')[1])) + lesson.duration_minutes;
   const endH = String(Math.floor(endMin / 60)).padStart(2, '0');
   const endM = String(endMin % 60).padStart(2, '0');
-  const isAllDay = lesson.duration_minutes >= 900; // 15 saat+ = tüm gün
+  const isAllDay = lesson.duration_minutes >= 900;
 
   return (
-    <div className={`group rounded-xl border border-amber-200 bg-amber-50/80 p-2.5 transition-all ${compact ? 'text-xs' : 'text-sm'}`}>
-      <div className="flex items-start justify-between gap-1">
+    <div className={`group rounded-xl border border-amber-200 bg-amber-50/80 p-2.5 transition-all ${compact ? 'text-xs' : 'text-sm'} ${stretch ? 'flex-1 flex flex-col' : ''}`}>
+      <div className={`flex items-start justify-between gap-1 ${stretch ? 'flex-1' : ''}`}>
         <div className="min-w-0 flex-1">
           <div className="font-bold text-amber-700 truncate">🚫 {lesson.label || 'Tatil'}</div>
           <div className="text-amber-500 mt-0.5">
