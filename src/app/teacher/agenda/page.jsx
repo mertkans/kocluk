@@ -50,6 +50,7 @@ export default function AgendaPage() {
   const [showModal, setShowModal] = useState(false);
   const [editLesson, setEditLesson] = useState(null);
   const [showHolidayModal, setShowHolidayModal] = useState(false);
+  const [deleteConfirmLesson, setDeleteConfirmLesson] = useState(null);
 
   const days = getWeekDays(weekStart);
 
@@ -213,9 +214,31 @@ export default function AgendaPage() {
     await fetchLessons();
   };
 
-  const handleDelete = async (lesson) => {
-    if (!confirm('Bu kaydı silmek istediğinizden emin misiniz?')) return;
-    await supabase.from('scheduled_lessons').delete().eq('id', lesson.id);
+  const handleDelete = (lesson) => {
+    if (lesson.is_recurring && lesson.recurring_group_id) {
+      // Tekrar eden kayıt — özel diyalog göster
+      setDeleteConfirmLesson(lesson);
+    } else {
+      // Tek seferlik kayıt — basit onay
+      if (!confirm('Bu kaydı silmek istediğinizden emin misiniz?')) return;
+      supabase.from('scheduled_lessons').delete().eq('id', lesson.id).then(() => fetchLessons());
+    }
+  };
+
+  const executeDelete = async (mode) => {
+    const lesson = deleteConfirmLesson;
+    setDeleteConfirmLesson(null);
+    if (!lesson) return;
+
+    if (mode === 'single') {
+      await supabase.from('scheduled_lessons').delete().eq('id', lesson.id);
+    } else if (mode === 'future') {
+      await supabase
+        .from('scheduled_lessons')
+        .delete()
+        .eq('recurring_group_id', lesson.recurring_group_id)
+        .gte('lesson_date', lesson.lesson_date);
+    }
     await fetchLessons();
   };
 
@@ -445,6 +468,13 @@ export default function AgendaPage() {
         onSave={handleSaveHoliday}
       />
 
+      {/* Tekrar Eden Silme Diyaloğu */}
+      <RecurringDeleteDialog
+        lesson={deleteConfirmLesson}
+        onClose={() => setDeleteConfirmLesson(null)}
+        onConfirm={executeDelete}
+      />
+
       {/* Modal animation style */}
       <style>{`
         @keyframes modalIn {
@@ -452,6 +482,67 @@ export default function AgendaPage() {
           to { opacity: 1; transform: scale(1) translateY(0); }
         }
       `}</style>
+    </div>
+  );
+}
+
+// ---- Recurring Delete Dialog ----
+function RecurringDeleteDialog({ lesson, onClose, onConfirm }) {
+  if (!lesson) return null;
+
+  const isHoliday = lesson.lesson_type === 'holiday';
+  const label = isHoliday ? (lesson.label || 'Tatil') : 'Bu ders';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-5"
+        style={{ animation: 'modalIn 0.2s ease-out' }}
+      >
+        {/* İkon + Başlık */}
+        <div className="text-center">
+          <div className="text-4xl mb-3">🔁</div>
+          <h2 className="text-lg font-bold text-gray-900">Tekrar Eden Kayıt</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            <span className="font-semibold text-gray-700">{label}</span> bir tekrar eden bloktur.
+            <br />Ne yapmak istersiniz?
+          </p>
+        </div>
+
+        {/* Seçenekler */}
+        <div className="space-y-2">
+          <button
+            onClick={() => onConfirm('single')}
+            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50 text-sm font-semibold text-gray-700 hover:text-blue-700 transition-all text-left flex items-center gap-3"
+          >
+            <span className="text-xl">📌</span>
+            <div>
+              <div>Sadece Bu Haftayı Sil</div>
+              <div className="text-xs font-normal text-gray-400">Yalnızca bu tarih silinir, diğerleri kalır</div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => onConfirm('future')}
+            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 hover:border-red-300 hover:bg-red-50 text-sm font-semibold text-gray-700 hover:text-red-700 transition-all text-left flex items-center gap-3"
+          >
+            <span className="text-xl">🗑️</span>
+            <div>
+              <div>Bu ve Sonrakileri Sil</div>
+              <div className="text-xs font-normal text-gray-400">Bu tarih dahil gelecekteki tüm tekrarlar silinir</div>
+            </div>
+          </button>
+        </div>
+
+        {/* İptal */}
+        <button
+          onClick={onClose}
+          className="w-full py-2.5 text-sm font-semibold text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          İptal
+        </button>
+      </div>
     </div>
   );
 }
