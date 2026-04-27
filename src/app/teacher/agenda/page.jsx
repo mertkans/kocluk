@@ -532,7 +532,7 @@ function LessonCard({ lesson, compact, onEdit, onStatus, onDelete }) {
         )}
       </div>
 
-      {/* Action buttons */}
+      {/* Action buttons — scheduled */}
       {lesson.status === 'scheduled' && (
         <div className={`flex gap-1 mt-1.5 ${compact ? 'opacity-0 group-hover:opacity-100' : ''} transition-opacity`}>
           <button
@@ -562,6 +562,19 @@ function LessonCard({ lesson, compact, onEdit, onStatus, onDelete }) {
             title="Sil"
           >
             🗑
+          </button>
+        </div>
+      )}
+
+      {/* Delete button — cancelled */}
+      {lesson.status === 'cancelled' && (
+        <div className={`flex gap-1 mt-1.5 ${compact ? 'opacity-0 group-hover:opacity-100' : ''} transition-opacity`}>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(lesson); }}
+            className="flex-1 py-1 rounded-lg bg-red-100 text-red-500 hover:bg-red-200 font-bold transition-all text-xs"
+            title="Sil"
+          >
+            🗑 Sil
           </button>
         </div>
       )}
