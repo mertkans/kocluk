@@ -77,18 +77,18 @@ export default function LoginPage() {
             <div className="w-full max-w-md z-10 relative">
                 {/* Logo and Branding Header */}
                 <div className="text-center mb-8">
-                    <div className="mb-3 hover:scale-105 transition-all duration-300">
+                    <div className="flex items-center justify-center gap-3.5 mb-4 hover:scale-[1.02] transition-all duration-300">
                         <img 
                             src="/logo.png" 
                             alt="ozel.dersi.tr Logo" 
-                            className="mx-auto h-20 w-auto object-contain"
+                            className="h-14 w-auto object-contain"
                         />
+                        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 leading-none">
+                            <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent font-black tracking-tighter">
+                                ozel.dersi.tr
+                            </span>
+                        </h1>
                     </div>
-                    <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 mb-2">
-                        <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent font-black tracking-tighter">
-                            ozel.dersi.tr
-                        </span>
-                    </h1>
                     <p className="text-slate-500 text-sm font-medium max-w-xs mx-auto leading-relaxed">
                         Sizi en iyi anlayan öğretmenle aranızdaki en kısa yol
                     </p>
