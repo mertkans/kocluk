@@ -69,7 +69,7 @@ export default function LoginPage() {
             <div className="w-full max-w-sm">
                 {/* Logo */}
                 <div className="text-center mb-8">
-                    <h1 className="text-3xl font-black text-gray-900 tracking-tight">📚 ÖdevTakip</h1>
+                    <h1 className="text-3xl font-black text-gray-900 tracking-tight">📚 ozel.dersi.tr</h1>
                     <p className="text-gray-400 text-sm mt-1">Optik Form Tabanlı Ödev Sistemi</p>
                 </div>
 

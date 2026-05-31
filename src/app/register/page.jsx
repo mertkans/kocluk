@@ -53,7 +53,7 @@ export default function RegisterPage() {
         <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-gray-50 to-blue-50">
             <div className="w-full max-w-sm">
                 <div className="text-center mb-8">
-                    <h1 className="text-3xl font-black text-gray-900 tracking-tight">📚 ÖdevTakip</h1>
+                    <h1 className="text-3xl font-black text-gray-900 tracking-tight">📚 ozel.dersi.tr</h1>
                     <p className="text-gray-400 text-sm mt-1">Öğretmen Kaydı</p>
                 </div>
 
