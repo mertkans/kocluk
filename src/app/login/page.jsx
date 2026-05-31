@@ -70,7 +70,7 @@ export default function LoginPage() {
                 {/* Logo */}
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-black text-gray-900 tracking-tight">📚 ozel.dersi.tr</h1>
-                    <p className="text-gray-400 text-sm mt-1">Optik Form Tabanlı Ödev Sistemi</p>
+                    <p className="text-gray-400 text-sm mt-1">Sizi en iyi anlayan öğretmenle aranızdaki en kısa yol</p>
                 </div>
 
                 {/* Form */}
